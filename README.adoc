@@ -1,0 +1,12 @@
+= My first ray tracer
+
+.Run on PC
+[source, bash]
+----
+cargo run
+----
+.Build wasm
+[source, bash]
+----
+wasm-pack build -d target/wasm32/pkg --target web
+----
