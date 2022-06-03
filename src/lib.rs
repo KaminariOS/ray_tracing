@@ -9,6 +9,10 @@ use winit::event::{Event, VirtualKeyCode};
 use winit_input_helper::WinitInputHelper;
 use winit::dpi::{LogicalSize, PhysicalSize};
 
+mod gui;
+use gui::Framework;
+mod winit_egui;
+
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
@@ -79,21 +83,10 @@ pub async fn run() {
             .await
             .expect("Pixels error")
     };
+    let mut framework = Framework::new(&window, &pixels);
     let mut renderer = Renderer{width: WIDTH, height: HEIGHT};
     let mut input = WinitInputHelper::new();
     event_loop.run(move |event, _, control_flow| {
-        // Draw the current frame
-        if let Event::RedrawRequested(_) = event {
-            renderer.draw(pixels.get_frame());
-            if pixels
-                .render()
-                .map_err(|e| error!("pixels.render() failed: {}", e))
-                .is_err()
-            {
-                *control_flow = ControlFlow::Exit;
-                return;
-            }
-        }
 
         // Handle input events
         if input.update(&event) {
@@ -103,16 +96,53 @@ pub async fn run() {
                 return;
             }
 
+            if let Some(scale_factor) = input.scale_factor() {
+                framework.scale_factor = scale_factor as f32;
+            }
             // Resize the window
             if let Some(PhysicalSize {width, height}) = input.window_resized() {
                 pixels.resize_surface(width, height);
                 let scale = 20;
                 pixels.resize_buffer(width / scale, height / scale);
                 renderer.resize(width / scale, height / scale);
+                framework.resize(width, height);
                 log::info!("window resized {:?} : {}", (width, height), pixels.get_frame().len());
             }
             // Update internal state and request a redraw
             window.request_redraw();
+        }
+        match event {
+            Event::WindowEvent { event, .. } => {
+                // Update egui inputs
+                framework.handle_event(&event);
+            }
+            // Draw the current frame
+            Event::RedrawRequested(_) => {
+                renderer.draw(pixels.get_frame());
+
+                // Prepare egui
+
+                framework.prepare(&window);
+                let render_result = pixels.render_with(|encoder, render_target, context| {
+                    // Render the world texture
+                    context.scaling_renderer.render(encoder, render_target);
+                    framework.render(context, render_target, encoder);
+                    // Render egui
+                    Ok(())
+                });
+                // Render everything together
+
+                // Basic error handling
+                if render_result
+                    .map_err(|e| error!("pixels.render() failed: {}", e))
+                    .is_err()
+                {
+                    *control_flow = ControlFlow::Exit;
+                }
+
+
+            }
+            _ => (),
         }
     });
 }
@@ -144,3 +174,4 @@ impl Renderer {
         (i / self.width, i % self.width)
     }
 }
+
