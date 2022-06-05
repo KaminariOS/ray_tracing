@@ -1,24 +1,39 @@
 use std::rc::Rc;
+use image::ColorType;
 use log::error;
+use na::Vector3;
 use pixels::{Pixels, SurfaceTexture};
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use winit::event::{Event, VirtualKeyCode};
-use winit_input_helper::WinitInputHelper;
 use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::{Event, VirtualKeyCode};
+use winit::event_loop::{ControlFlow, EventLoop};
+use winit::window::WindowBuilder;
+use winit_input_helper::WinitInputHelper;
 
 mod gui;
+use crate::geo::{create_objs};
+use crate::ray::Ray;
+use crate::renderer::Renderer;
 use gui::Framework;
-mod winit_egui;
 
+mod camera;
+mod geo;
+mod ray;
+mod renderer;
+mod winit_egui;
+mod rand_gen;
+mod material;
+
+extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
+type Color = Vector3<f32>;
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-     #[cfg(target_arch = "wasm32")] {
+    #[cfg(target_arch = "wasm32")]
+    {
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
         console_log::init_with_level(log::Level::Info).expect("Could't initialize logger");
     }
@@ -84,10 +99,10 @@ pub async fn run() {
             .expect("Pixels error")
     };
     let mut framework = Framework::new(&window, &pixels);
-    let mut renderer = Renderer{width: WIDTH, height: HEIGHT};
+    let mut renderer = Renderer::new(WIDTH, HEIGHT, create_objs());
     let mut input = WinitInputHelper::new();
+    // let now = instant::Instant::now();
     event_loop.run(move |event, _, control_flow| {
-
         // Handle input events
         if input.update(&event) {
             // Close events
@@ -99,14 +114,18 @@ pub async fn run() {
             if let Some(scale_factor) = input.scale_factor() {
                 framework.scale_factor = scale_factor as f32;
             }
+
+            framework.save_img(&renderer, &mut pixels);
+            renderer.update_from_gui(&framework.gui, &mut pixels);
             // Resize the window
-            if let Some(PhysicalSize {width, height}) = input.window_resized() {
-                pixels.resize_surface(width, height);
-                let scale = 20;
-                pixels.resize_buffer(width / scale, height / scale);
-                renderer.resize(width / scale, height / scale);
+            if let Some(PhysicalSize { width, height }) = input.window_resized() {
+                renderer.resize(width, height, &mut pixels);
                 framework.resize(width, height);
-                log::info!("window resized {:?} : {}", (width, height), pixels.get_frame().len());
+                log::info!(
+                    "window resized {:?} : {}",
+                    (width, height),
+                    pixels.get_frame().len()
+                );
             }
             // Update internal state and request a redraw
             window.request_redraw();
@@ -119,7 +138,6 @@ pub async fn run() {
             // Draw the current frame
             Event::RedrawRequested(_) => {
                 renderer.draw(pixels.get_frame());
-
                 // Prepare egui
 
                 framework.prepare(&window);
@@ -140,38 +158,34 @@ pub async fn run() {
                     *control_flow = ControlFlow::Exit;
                 }
 
-
             }
             _ => (),
         }
     });
 }
 
-struct Renderer {
-    width: u32,
-    height: u32
+pub fn image_mode() {
+    let now = instant::Instant::now();
+    let scale = option_env!("SCALE").unwrap_or("1").parse::<u32>().unwrap();
+    let (width, height) = (WIDTH / scale, HEIGHT / scale);
+    let mut renderer = Renderer::new(width, height, create_objs());
+    renderer.multisample = option_env!("SAMPLE").unwrap_or("4").parse::<usize>().unwrap();
+    renderer.max_depth = option_env!("DEPTH").unwrap_or("10").parse::<usize>().unwrap();
+    log::warn!("SampleCount:{}; max depth: {}; scale: {}; ",
+                renderer.multisample,
+                renderer.max_depth,
+                scale
+               );
+    let mut pixels = vec![0; (width * height * 4) as usize];
+    renderer.draw(&mut pixels);
+    let seconds = now.elapsed().as_secs();
+    log::warn!("Time: {}min {}s", seconds / 60, seconds % 60);
+    image::save_buffer(
+        "screenshot.png",
+        &pixels,
+        renderer.width,
+        renderer.height,
+        ColorType::Rgba8,
+    )
+        .ok();
 }
-
-impl Renderer {
-    fn draw(&self, frame: &mut [u8]) {
-        assert_eq!((frame.len() / 4) as u32, self.width * self.height);
-        frame.chunks_exact_mut(4).enumerate().for_each(|(i, pixel)| {
-            let (y, x) = self.cal_coords(i);
-            Self::draw_checkerboard(x, y, pixel);
-        });
-    }
-    fn draw_checkerboard(x: u32, y: u32, pixel: &mut [u8]) {
-        let color = if (x % 2 == 0) ^ (y % 2 == 0) {0} else {255};
-        let rgba = [color, color, color, 0xff];
-        pixel.copy_from_slice(&rgba);
-    }
-    fn resize(&mut self, width: u32, height: u32) {
-        self.width = width;
-        self.height = height;
-    }
-    fn cal_coords(&self, i: usize) -> (u32, u32){
-        let i = i as u32;
-        (i / self.width, i % self.width)
-    }
-}
-

@@ -15,7 +15,6 @@ impl Painter {
     /// # Safety
     /// The given `window` must outlive the returned [`Painter`].
     pub fn new(window: &winit::window::Window, pixels: &Pixels, msaa_samples: u32) -> Self {
-
         let size = window.inner_size();
         let surface_format = pixels.render_texture_format();
         let surface_config = wgpu::SurfaceConfiguration {
@@ -34,7 +33,6 @@ impl Painter {
         }
     }
 
-
     pub fn on_window_resized(&mut self, width_in_pixels: u32, height_in_pixels: u32) {
         self.surface_config.width = width_in_pixels;
         self.surface_config.height = height_in_pixels;
@@ -47,10 +45,8 @@ impl Painter {
         textures_delta: &egui::TexturesDelta,
         context: &PixelsContext,
         render_target: &wgpu::TextureView,
-        encoder: &mut wgpu::CommandEncoder
+        encoder: &mut wgpu::CommandEncoder,
     ) {
-
-
         // Upload all resources for the GPU.
         let screen_descriptor = renderer::ScreenDescriptor {
             size_in_pixels: [self.surface_config.width, self.surface_config.height],
@@ -81,5 +77,4 @@ impl Painter {
             None,
         );
     }
-
 }

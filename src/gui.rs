@@ -1,6 +1,8 @@
+use crate::winit_egui::Painter;
+use crate::Renderer;
 use egui::{ClippedPrimitive, Context, TexturesDelta};
+use image::ColorType;
 use pixels::{Pixels, PixelsContext};
-use crate::winit_egui::{ Painter};
 use winit::window::Window;
 
 /// Manages all state required for rendering egui over `Pixels`.
@@ -12,14 +14,19 @@ pub(crate) struct Framework {
     paint_jobs: Vec<ClippedPrimitive>,
     textures: TexturesDelta,
     // State for the GUI
-    gui: Gui,
-    pub scale_factor: f32
+    pub(crate) gui: Gui,
+    pub scale_factor: f32,
 }
 
 /// Example application state. A real application will need a lot more state than this.
-struct Gui {
+pub struct Gui {
     /// Only show the egui window when true.
     window_open: bool,
+    my_boolean: bool,
+    pub scale: u32,
+    pub save_img: bool,
+    pub sample_count: usize,
+    pub max_depth: usize
 }
 
 impl Framework {
@@ -28,7 +35,10 @@ impl Framework {
         let painter = Painter::new(window, pixels, 1);
         let scale_factor = window.scale_factor() as f32;
         let egui_ctx = Context::default();
-        let egui_state = egui_winit::State::from_pixels_per_point(pixels.device().limits().max_texture_dimension_2d as usize, scale_factor);
+        let egui_state = egui_winit::State::from_pixels_per_point(
+            pixels.device().limits().max_texture_dimension_2d as usize,
+            scale_factor,
+        );
 
         let textures = TexturesDelta::default();
         let gui = Gui::new();
@@ -40,7 +50,7 @@ impl Framework {
             paint_jobs: Vec::new(),
             textures,
             gui,
-            scale_factor
+            scale_factor,
         }
     }
 
@@ -55,7 +65,6 @@ impl Framework {
             self.painter.on_window_resized(width, height);
         }
     }
-
 
     /// Prepare egui.
     pub(crate) fn prepare(&mut self, window: &Window) {
@@ -77,20 +86,47 @@ impl Framework {
         &mut self,
         context: &PixelsContext,
         render_target: &wgpu::TextureView,
-        encoder: &mut wgpu::CommandEncoder
+        encoder: &mut wgpu::CommandEncoder,
     ) {
-
-        self.painter.paint_and_update_textures(self.scale_factor,&self.paint_jobs, &self.textures, context, render_target, encoder);
+        self.painter.paint_and_update_textures(
+            self.scale_factor,
+            &self.paint_jobs,
+            &self.textures,
+            context,
+            render_target,
+            encoder,
+        );
 
         // Cleanup
         self.textures.clear();
+    }
+
+    pub fn save_img(&mut self, renderer: &Renderer, pixels: &mut Pixels) {
+        if self.gui.save_img {
+            self.gui.save_img = false;
+            image::save_buffer(
+                "screenshot.png",
+                pixels.get_frame(),
+                renderer.width,
+                renderer.height,
+                ColorType::Rgba8,
+            )
+            .ok();
+        }
     }
 }
 
 impl Gui {
     /// Create a `Gui`.
     fn new() -> Self {
-        Self { window_open: true }
+        Self {
+            window_open: false,
+            my_boolean: false,
+            scale: 10,
+            save_img: false,
+            sample_count: 4,
+            max_depth: 10
+        }
     }
 
     /// Create the UI using egui.
@@ -120,5 +156,20 @@ impl Gui {
                     ui.hyperlink("https://docs.rs/egui");
                 });
             });
+        egui::Window::new("df").show(ctx, |ui| {
+            ui.add(egui::Label::new("Hello World!"));
+            ui.label("A shorter and more convenient way to add a label.");
+            if ui.button("Take a screenshot").clicked() {
+                self.save_img = true;
+            }
+            ui.label("Scale");
+            ui.add(egui::Slider::new(&mut self.scale, 1..=20));
+            // ui.add(egui::DragValue::new(&mut self.scale));
+            ui.label("SampleCount");
+            ui.add(egui::Slider::new(&mut self.sample_count, 1..=50));
+            ui.label("Max depth");
+            ui.add(egui::Slider::new(&mut self.max_depth, 1..=50));
+            ui.checkbox(&mut self.my_boolean, "Checkbox");
+        });
     }
 }
