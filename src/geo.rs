@@ -2,7 +2,7 @@ use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::{Color, Ray};
 use na::Point3;
 use std::sync::{Arc, RwLock};
-use crate::material::{Lambertian, Material, Metal};
+use crate::material::{Dielectric, Lambertian, Material, Metal};
 
 pub struct Sphere {
     pub center: Point3<f32>,
@@ -45,15 +45,18 @@ impl Hittable for Sphere {
 
 pub fn create_objs() -> HittableList {
     let material_ground = Lambertian::new(Color::from([0.8, 0.8, 0.]));
-    let material_center = Lambertian::new(Color::from([0.7, 0.3, 0.3]));
-    let material_left = Metal::new(Color::from([0.8, 0.8, 0.8]));
-    let material_right = Metal::new(Color::from([0.8, 0.6, 0.2]));
+    let material_center = Lambertian::new(Color::from([0.1, 0.2, 0.5]));
+    // let material_center = Dielectric::new(1.5);
+    // let material_left = Metal::new(Color::from([0.8, 0.8, 0.8]), 0.3);
+    let material_left = Dielectric::new(1.5);
+    let material_right = Metal::new(Color::from([0.8, 0.6, 0.2]), 0.);
     HittableList {
         objects:
         vec![
             Sphere::new(Point3::from([0., 0., -1.]), 0.5, material_center),
             Sphere::new(Point3::from([0., -100.5, -1.]), 100., material_ground),
-            Sphere::new(Point3::from([-1., 0., -1.]), 0.5, material_left),
+            Sphere::new(Point3::from([-1., 0., -1.]), 0.5, material_left.clone()),
+            Sphere::new(Point3::from([-1., 0., -1.]), -0.4, material_left),
             Sphere::new(Point3::from([1., 0., -1.]), 0.5, material_right),
         ]
     }

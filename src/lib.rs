@@ -101,7 +101,7 @@ pub async fn run() {
     let mut framework = Framework::new(&window, &pixels);
     let mut renderer = Renderer::new(WIDTH, HEIGHT, create_objs());
     let mut input = WinitInputHelper::new();
-    // let now = instant::Instant::now();
+    // let mut last = instant::Instant::now();
     event_loop.run(move |event, _, control_flow| {
         // Handle input events
         if input.update(&event) {
@@ -137,9 +137,13 @@ pub async fn run() {
             }
             // Draw the current frame
             Event::RedrawRequested(_) => {
-                renderer.draw(pixels.get_frame());
+                // let now = instant::Instant::now();
+                // let dt = now - last;
+                if framework.gui.updated() {
+                    framework.gui.update();
+                    renderer.draw(pixels.get_frame());
+                }
                 // Prepare egui
-
                 framework.prepare(&window);
                 let render_result = pixels.render_with(|encoder, render_target, context| {
                     // Render the world texture

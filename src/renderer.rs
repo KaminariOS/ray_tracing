@@ -48,11 +48,11 @@ impl Renderer {
         }
         assert_eq!(pixel_count as u32, self.width * self.height);
         cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
-                let iter = frame.chunks_exact_mut(4);
-            } else {
+            if #[cfg(feature = "rayon")] {
                 use rayon::prelude::*;
                 let iter = frame.par_chunks_exact_mut(4);
+            } else {
+                let iter = frame.chunks_exact_mut(4);
             }
         }
 

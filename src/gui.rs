@@ -19,16 +19,6 @@ pub(crate) struct Framework {
 }
 
 /// Example application state. A real application will need a lot more state than this.
-pub struct Gui {
-    /// Only show the egui window when true.
-    window_open: bool,
-    my_boolean: bool,
-    pub scale: u32,
-    pub save_img: bool,
-    pub sample_count: usize,
-    pub max_depth: usize
-}
-
 impl Framework {
     /// Create egui.
     pub(crate) fn new(window: &Window, pixels: &Pixels) -> Self {
@@ -116,19 +106,50 @@ impl Framework {
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Gui {
+    /// Only show the egui window when true.
+    window_open: bool,
+    my_boolean: bool,
+    pub scale: u32,
+    pub save_img: bool,
+    pub sample_count: usize,
+    pub max_depth: usize,
+    pre: Option<Box<Gui>>
+}
+
+
+
 impl Gui {
     /// Create a `Gui`.
     fn new() -> Self {
-        Self {
+        let mut cur = Self {
             window_open: false,
             my_boolean: false,
             scale: 10,
             save_img: false,
             sample_count: 4,
-            max_depth: 10
-        }
+            max_depth: 10,
+            pre: None
+        };
+        cur.pre = Some(Box::new(cur.clone()));
+        cur
     }
 
+    pub fn updated(&mut self) -> bool {
+
+        if let Some(pre) = self.pre.take() {
+            let dirty =  *pre != *self;
+            self.pre = Some(pre);
+            return dirty
+        }
+        false
+    }
+
+    pub fn update(&mut self) {
+        self.pre.take();
+        self.pre = Some(Box::new(self.clone()));
+    }
     /// Create the UI using egui.
     fn ui(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {

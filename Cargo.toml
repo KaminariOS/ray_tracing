@@ -8,8 +8,9 @@ crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["rayon"]
 progress = ["indicatif"]
+rayon = ["dep:rayon"]
 
 [dependencies]
 cfg-if = "1.0.0"
@@ -44,6 +45,6 @@ instant = { version = "0.1.12", features = ["stdweb", "wasm-bindgen"] }
 env_logger = "0.9"
 wgpu = { version = "0.12"}
 pollster = "0.2.5"
-rayon = "1.5.3"
+rayon = {version = "1.5.3", optional = true}
 getrandom = "0.2.6"
 indicatif = {version = "0.16.2", optional = true}
