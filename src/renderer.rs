@@ -28,13 +28,13 @@ impl Renderer {
             actual_width: width,
             scale: 1,
             camera: Camera::new(
-                Point3::from([3., 3., 2.]),
-                Vector3::from([-2., -2., -2.]),
+                Point3::from([13., 2., 3.]),
+                Vector3::from([-13., -2., -3.]),
                 Vector3::y(),
                 20.,
                 aspect_ratio,
-                2.,
-                3.* (3.0_f32.sqrt())
+                0.1,
+                10.
             ),
             actual_height: height,
             world,

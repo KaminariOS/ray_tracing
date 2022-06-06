@@ -1,5 +1,7 @@
 = My first ray tracer
 
+https://raytracing.github.io/books/RayTracingInOneWeekend.html[*Ray Tracing in One Weekend*]
+
 .Run on PC
 [source, bash]
 ----

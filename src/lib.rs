@@ -12,7 +12,7 @@ use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
 mod gui;
-use crate::geo::{create_objs};
+use crate::geo::{create_random_scene};
 use crate::ray::Ray;
 use crate::renderer::Renderer;
 use gui::Framework;
@@ -99,7 +99,7 @@ pub async fn run() {
             .expect("Pixels error")
     };
     let mut framework = Framework::new(&window, &pixels);
-    let mut renderer = Renderer::new(WIDTH, HEIGHT, create_objs());
+    let mut renderer = Renderer::new(WIDTH, HEIGHT, create_random_scene());
     let mut input = WinitInputHelper::new();
     // let mut last = instant::Instant::now();
     event_loop.run(move |event, _, control_flow| {
@@ -172,7 +172,7 @@ pub fn image_mode() {
     let now = instant::Instant::now();
     let scale = option_env!("SCALE").unwrap_or("1").parse::<u32>().unwrap();
     let (width, height) = (WIDTH / scale, HEIGHT / scale);
-    let mut renderer = Renderer::new(width, height, create_objs());
+    let mut renderer = Renderer::new(width, height, create_random_scene());
     renderer.multisample = option_env!("SAMPLE").unwrap_or("4").parse::<usize>().unwrap();
     renderer.max_depth = option_env!("DEPTH").unwrap_or("10").parse::<usize>().unwrap();
     log::warn!("SampleCount:{}; max depth: {}; scale: {}; ",
