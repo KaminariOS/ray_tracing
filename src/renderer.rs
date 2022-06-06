@@ -2,7 +2,7 @@ use crate::camera::Camera;
 use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::{Color, Ray};
 use cfg_if::cfg_if;
-use na::{Vector3, Vector4};
+use na::{Point3, Vector3, Vector4};
 use pixels::Pixels;
 use crate::gui::Gui;
 use crate::rand_gen::{get_rand};
@@ -22,13 +22,20 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(width: u32, height: u32, world: HittableList) -> Renderer {
         let aspect_ratio = width as f32 / height as f32;
-        let viewport_height = 2.;
         Self {
             width,
             height,
             actual_width: width,
             scale: 1,
-            camera: Camera::new(viewport_height, aspect_ratio),
+            camera: Camera::new(
+                Point3::from([3., 3., 2.]),
+                Vector3::from([-2., -2., -2.]),
+                Vector3::y(),
+                20.,
+                aspect_ratio,
+                2.,
+                3.* (3.0_f32.sqrt())
+            ),
             actual_height: height,
             world,
             multisample: 4,
@@ -70,13 +77,13 @@ impl Renderer {
                     let ray = self.camera.get_ray(u, v);
                     ray_color(&ray, &self.world, self.max_depth)
                 })
-                .fold(Vector4::zeros(), |acc, next| acc + next) / self.multisample as f32;
-            let mut rgba = rgba_float
+                .fold(Vector3::zeros(), |acc, next| acc + next) / self.multisample as f32;
+            let mut rgb = rgba_float
                 .into_iter()
                 .map(Self::float_to_rgb)
                 .collect::<Vec<_>>();
-            rgba[3] = 0xff;
-            pixel.copy_from_slice(&rgba);
+            rgb.push(0xff);
+            pixel.copy_from_slice(&rgb);
         });
 
         #[cfg(feature = "progress")]
@@ -154,9 +161,9 @@ impl Renderer {
     }
 }
 
-fn ray_color(r: &Ray, world: &HittableList, depth: usize) -> Vector4<f32> {
+fn ray_color(r: &Ray, world: &HittableList, depth: usize) -> Vector3<f32> {
     if depth == 0 {
-        return Vector3::zeros().push(1.)
+        return Vector3::zeros()
     }
     let mut hit_record = HitRecord::default();
     if world.hit(r, 0.001, f32::INFINITY, &mut hit_record) {
@@ -164,12 +171,12 @@ fn ray_color(r: &Ray, world: &HittableList, depth: usize) -> Vector4<f32> {
         let mut scattered = Ray::default();
         let mut attenuation = Color::zeros();
         if hit_record.material.scatter(r, &hit_record, &mut attenuation, &mut scattered) {
-            return attenuation.push(1.).component_mul(&ray_color(&scattered, world, depth - 1))
+            return attenuation.component_mul(&ray_color(&scattered, world, depth - 1))
         }
-        return Vector4::zeros()
+        return Vector3::zeros()
     }
     let unit_direction = r.direction.normalize();
     let t = 0.5 * (unit_direction.y + 1.);
     let color = (1. - t) * Vector3::from([1.; 3]) + t * Vector3::from([0.5, 0.7, 1.]);
-    color.push(1.)
+    color
 }

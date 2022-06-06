@@ -56,7 +56,7 @@ pub fn create_objs() -> HittableList {
             Sphere::new(Point3::from([0., 0., -1.]), 0.5, material_center),
             Sphere::new(Point3::from([0., -100.5, -1.]), 100., material_ground),
             Sphere::new(Point3::from([-1., 0., -1.]), 0.5, material_left.clone()),
-            Sphere::new(Point3::from([-1., 0., -1.]), -0.4, material_left),
+            Sphere::new(Point3::from([-1., 0., -1.]), -0.45, material_left),
             Sphere::new(Point3::from([1., 0., -1.]), 0.5, material_right),
         ]
     }

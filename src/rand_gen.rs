@@ -41,3 +41,12 @@ pub fn rand_vec3_in_unit_hemisphere(normal: Vector3<f32>) -> Vector3<f32> {
         in_unit_sphere
     } else { -in_unit_sphere }
 }
+
+pub fn rand_vec3_in_unit_disk() -> Vector3<f32> {
+    loop {
+        let p = Vector3::from([get_rand_range(-1., 1.), get_rand_range(-1., 1.), 0.]);
+        if p.norm_squared() >= 1. {continue}
+        return p
+    }
+}
+
