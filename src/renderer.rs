@@ -2,21 +2,33 @@ use crate::camera::Camera;
 use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::{Color, Ray};
 use cfg_if::cfg_if;
+use derivative::Derivative;
 use na::{Point3, Vector3, Vector4};
+cfg_if! {
+    if #[cfg(feature = "window")] {
 use pixels::Pixels;
 use crate::gui::Gui;
+    }
+}
 use crate::rand_gen::{get_rand};
 
+#[allow(dead_code)]
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct Renderer {
     pub(crate) width: u32,
     pub(crate) height: u32,
+    #[derivative(Debug="ignore")]
     camera: Camera,
     scale: u32,
     actual_width: u32,
     actual_height: u32,
+    #[derivative(Debug="ignore")]
     world: HittableList,
     pub(crate) multisample: usize,
-    pub(crate) max_depth: usize
+    pub(crate) max_depth: usize,
+    #[derivative(Debug="ignore")]
+    pub dirty: bool
 }
 
 impl Renderer {
@@ -39,12 +51,16 @@ impl Renderer {
             actual_height: height,
             world,
             multisample: 4,
-            max_depth: 10
+            max_depth: 10,
+            dirty: true
         }
     }
 
     pub fn draw(&mut self, frame: &mut [u8]) {
-
+        if !self.dirty {return}
+        self.dirty = false;
+        log::warn!("{:?}", self);
+        let now = instant::Instant::now();
         let pixel_count = frame.len() / 4;
         cfg_if! {
             if #[cfg(feature = "progress")] {
@@ -88,6 +104,8 @@ impl Renderer {
 
         #[cfg(feature = "progress")]
         pb.finish_with_message("Done");
+        let seconds = now.elapsed().as_secs();
+        log::warn!("Time: {}min {}s", seconds / 60, seconds % 60);
     }
 
     #[allow(dead_code)]
@@ -118,6 +136,7 @@ impl Renderer {
 
         Vector4::from([r, g, b, 1.])
     }
+    #[cfg(feature = "window")]
     pub(crate) fn resize(&mut self, width: u32, height: u32, pixels: &mut Pixels) {
         pixels.resize_surface(width, height);
         self.actual_height = height;
@@ -128,6 +147,7 @@ impl Renderer {
         self.camera.resize(self.width, self.height);
     }
 
+    #[cfg(feature = "window")]
     pub(crate) fn update_scale(&mut self, scale: u32, pixels: &mut Pixels) {
         if scale != self.scale {
             self.scale = scale;
@@ -154,6 +174,7 @@ impl Renderer {
         )
     }
 
+    #[cfg(feature = "window")]
     pub fn update_from_gui(&mut self, gui: &Gui, pixels: &mut Pixels) {
         self.update_scale(gui.scale, pixels);
         self.multisample = gui.sample_count;

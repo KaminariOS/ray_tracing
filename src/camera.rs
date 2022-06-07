@@ -59,6 +59,7 @@ impl Camera {
         }
     }
 
+    #[cfg(feature = "window")]
     pub(crate) fn resize(&mut self, width: u32, height: u32) {
         let aspect_ratio = width as f32 / height as f32;
         *self = Camera::new(self.origin, -self.w, self.vup, self.vfov, aspect_ratio, self.len_radius * 2., self.focus_dist);

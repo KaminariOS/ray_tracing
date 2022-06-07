@@ -52,6 +52,7 @@ impl Framework {
     /// Resize egui.
     pub(crate) fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
+            self.gui.my_boolean = !self.gui.my_boolean;
             self.painter.on_window_resized(width, height);
         }
     }
@@ -140,16 +141,16 @@ impl Gui {
 
         if let Some(pre) = self.pre.take() {
             let dirty =  *pre != *self;
-            self.pre = Some(pre);
+            self.pre = Some(Box::new(self.clone()));
             return dirty
         }
         false
     }
 
-    pub fn update(&mut self) {
-        self.pre.take();
-        self.pre = Some(Box::new(self.clone()));
-    }
+    // pub fn update(&mut self) {
+    //     self.pre.take();
+    //     self.pre = Some(Box::new(self.clone()));
+    // }
     /// Create the UI using egui.
     fn ui(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {

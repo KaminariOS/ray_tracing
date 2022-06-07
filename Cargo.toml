@@ -8,22 +8,29 @@ crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["rayon"]
+web = ["window"]
+default = []
 progress = ["indicatif"]
-rayon = ["dep:rayon"]
+window = ["wgpu"]
+local = ["window", "rayon", "progress", "pollster"]
+windowless = ["rayon", "progress"]
 
 [dependencies]
 cfg-if = "1.0.0"
-egui = "0.18"
-egui-winit = { version = "0.18", features = ["links"], default-features = false }
 log = "0.4.17"
 nalgebra = "0.31"
+
+image = "0.24.2"
+instant = "0.1.12"
+
+egui = "0.18"
+egui-winit = { version = "0.18", features = ["links"], default-features = false }
 pixels = "0.9.0"
 winit = "0.26.1"
 winit_input_helper = "0.12.0"
 egui-wgpu = { path = "../egui-wgpu"}
-image = "0.24.2"
-instant = "0.1.12"
+derivative = "2.2.0"
+
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"
@@ -43,8 +50,10 @@ instant = { version = "0.1.12", features = ["stdweb", "wasm-bindgen"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.9"
-wgpu = { version = "0.12"}
-pollster = "0.2.5"
 rayon = {version = "1.5.3", optional = true}
 getrandom = "0.2.6"
 indicatif = {version = "0.16.2", optional = true}
+wgpu = { version = "0.12", optional = true}
+pollster = { version = "0.2.5", optional = true}
+
+

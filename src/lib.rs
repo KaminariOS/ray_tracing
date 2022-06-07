@@ -1,27 +1,31 @@
-use std::rc::Rc;
-use image::ColorType;
-use log::error;
+use cfg_if::cfg_if;
 use na::Vector3;
+
+cfg_if! {
+    if #[cfg(feature = "window")] {
+use std::rc::Rc;
 use pixels::{Pixels, SurfaceTexture};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
-
 mod gui;
+use gui::Framework;
+mod winit_egui;
+    }
+}
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
 use crate::geo::{create_random_scene};
 use crate::ray::Ray;
 use crate::renderer::Renderer;
-use gui::Framework;
 
 mod camera;
 mod geo;
 mod ray;
 mod renderer;
-mod winit_egui;
 mod rand_gen;
 mod material;
 
@@ -30,7 +34,9 @@ const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
 type Color = Vector3<f32>;
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
+#[cfg(feature = "window")]
 pub async fn run() {
     #[cfg(target_arch = "wasm32")]
     {
@@ -100,6 +106,7 @@ pub async fn run() {
     };
     let mut framework = Framework::new(&window, &pixels);
     let mut renderer = Renderer::new(WIDTH, HEIGHT, create_random_scene());
+    renderer.update_from_gui(&framework.gui, &mut pixels);
     let mut input = WinitInputHelper::new();
     // let mut last = instant::Instant::now();
     event_loop.run(move |event, _, control_flow| {
@@ -116,7 +123,6 @@ pub async fn run() {
             }
 
             framework.save_img(&renderer, &mut pixels);
-            renderer.update_from_gui(&framework.gui, &mut pixels);
             // Resize the window
             if let Some(PhysicalSize { width, height }) = input.window_resized() {
                 renderer.resize(width, height, &mut pixels);
@@ -139,10 +145,9 @@ pub async fn run() {
             Event::RedrawRequested(_) => {
                 // let now = instant::Instant::now();
                 // let dt = now - last;
-                if framework.gui.updated() {
-                    framework.gui.update();
-                    renderer.draw(pixels.get_frame());
-                }
+                renderer.draw(pixels.get_frame());
+                renderer.dirty = framework.gui.updated();
+
                 // Prepare egui
                 framework.prepare(&window);
                 let render_result = pixels.render_with(|encoder, render_target, context| {
@@ -153,10 +158,12 @@ pub async fn run() {
                     Ok(())
                 });
                 // Render everything together
-
+                if renderer.dirty {
+                    renderer.update_from_gui(&framework.gui, &mut pixels);
+                }
                 // Basic error handling
                 if render_result
-                    .map_err(|e| error!("pixels.render() failed: {}", e))
+                    .map_err(|e| log::error!("pixels.render() failed: {}", e))
                     .is_err()
                 {
                     *control_flow = ControlFlow::Exit;
@@ -168,28 +175,21 @@ pub async fn run() {
     });
 }
 
+#[cfg(feature = "windowless")]
 pub fn image_mode() {
-    let now = instant::Instant::now();
     let scale = option_env!("SCALE").unwrap_or("1").parse::<u32>().unwrap();
     let (width, height) = (WIDTH / scale, HEIGHT / scale);
     let mut renderer = Renderer::new(width, height, create_random_scene());
     renderer.multisample = option_env!("SAMPLE").unwrap_or("4").parse::<usize>().unwrap();
     renderer.max_depth = option_env!("DEPTH").unwrap_or("10").parse::<usize>().unwrap();
-    log::warn!("SampleCount:{}; max depth: {}; scale: {}; ",
-                renderer.multisample,
-                renderer.max_depth,
-                scale
-               );
     let mut pixels = vec![0; (width * height * 4) as usize];
     renderer.draw(&mut pixels);
-    let seconds = now.elapsed().as_secs();
-    log::warn!("Time: {}min {}s", seconds / 60, seconds % 60);
     image::save_buffer(
         "screenshot.png",
         &pixels,
         renderer.width,
         renderer.height,
-        ColorType::Rgba8,
+        image::ColorType::Rgba8,
     )
         .ok();
 }
