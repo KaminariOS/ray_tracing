@@ -29,7 +29,7 @@ impl Default for Ray {
 }
 
 pub trait Hittable: Send + Sync {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, hit_record: &mut HitRecord) -> bool;
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
 }
 
 pub struct HitRecord {
@@ -86,24 +86,26 @@ impl Default for HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, hit_record: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut hit_temp = HitRecord::default();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
 
         for object in &self.objects {
-            if object
+            if let Some(new_hit) = object
                 .read()
                 .unwrap()
-                .hit(ray, t_min, closest_so_far, &mut hit_temp)
+                .hit(ray, t_min, closest_so_far)
             {
+                hit_temp = new_hit;
                 hit_anything = true;
                 closest_so_far = hit_temp.t;
             }
         }
         if hit_anything {
-            *hit_record = hit_temp;
+            Some(hit_temp)
+        } else {
+            None
         }
-        hit_anything
     }
 }

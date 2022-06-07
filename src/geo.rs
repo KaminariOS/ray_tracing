@@ -50,30 +50,31 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, hit_record: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.get_center(ray.time);
         let a = ray.direction.norm_squared();
         let half_b = oc.dot(&ray.direction);
         let c = oc.norm_squared() - self.radius * self.radius;
         let discriminant = half_b * half_b - a * c;
         if discriminant < 0. {
-            return false;
+            return None;
         }
         let sqrtd = discriminant.sqrt();
         let mut root = (-half_b - sqrtd) / a;
         if root < t_min || root > t_max {
             root = (-half_b + sqrtd) / a;
             if root < t_min || root > t_max {
-                return false;
+                return None;
             }
         }
+        let mut hit_record = HitRecord::default();
         hit_record.t = root;
         hit_record.point = ray.at(root);
         let outward_normal = (hit_record.point - self.get_center(ray
             .time)) / self.radius;
         hit_record.set_face_normal(ray, outward_normal);
         hit_record.material = self.material.clone();
-        true
+        Some(hit_record)
     }
 }
 

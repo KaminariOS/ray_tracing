@@ -1,9 +1,8 @@
 use crate::camera::Camera;
-use crate::ray::{HitRecord, Hittable, HittableList};
+use crate::ray::{Hittable, HittableList};
 use crate::{Color, Ray};
 use cfg_if::cfg_if;
 use derivative::Derivative;
-use indicatif::ProgressStyle;
 use na::{Point3, Vector3, Vector4};
 cfg_if! {
     if #[cfg(feature = "window")] {
@@ -192,20 +191,17 @@ impl Renderer {
 
 fn ray_color(r: &Ray, world: &HittableList, depth: usize) -> Vector3<f32> {
     if depth == 0 {
-        return Vector3::zeros()
+        return Color::zeros()
     }
-    let mut hit_record = HitRecord::default();
-    if world.hit(r, 0.001, f32::INFINITY, &mut hit_record) {
+    if let Some(hit_record) = world.hit(r, 0.001, f32::INFINITY) {
         // let target = hit_record.normal + rand_vec3_on_unit_sphere();
-        let mut scattered = Ray::default();
-        let mut attenuation = Color::zeros();
-        if hit_record.material.scatter(r, &hit_record, &mut attenuation, &mut scattered) {
+        if let Some((attenuation, scattered)) = hit_record.material.scatter(r, &hit_record) {
             return attenuation.component_mul(&ray_color(&scattered, world, depth - 1))
         }
-        return Vector3::zeros()
+        return Color::zeros()
     }
     let unit_direction = r.direction.normalize();
     let t = 0.5 * (unit_direction.y + 1.);
-    let color = (1. - t) * Vector3::from([1.; 3]) + t * Vector3::from([0.5, 0.7, 1.]);
+    let color = (1. - t) * Color::from([1.; 3]) + t * Color::from([0.5, 0.7, 1.]);
     color
 }

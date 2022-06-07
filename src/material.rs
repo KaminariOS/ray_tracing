@@ -5,7 +5,7 @@ use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphe
 use crate::ray::HitRecord;
 
 pub trait Material: Sync + Send {
-   fn scatter(&self, ray: &Ray, hit_record: &HitRecord, attenuation: &mut Color, scattered: &mut Ray) -> bool;
+   fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)>;
 }
 
 pub struct Lambertian {
@@ -18,14 +18,15 @@ impl Lambertian {
    }
 }
 impl Material for Lambertian {
-   fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord, attenuation: &mut Color, scattered: &mut Ray) -> bool {
+   fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
       let mut scatter_dir = hit_record.normal + rand_vec3_on_unit_sphere();
       if near_zero(scatter_dir) {
          scatter_dir = hit_record.normal;
       }
-       *scattered = Ray::new(hit_record.point, scatter_dir, ray_in.time);
-      *attenuation = self.albedo;
-      true
+      Some((
+         self.albedo,
+         Ray::new(hit_record.point, scatter_dir, ray_in.time)
+      ))
    }
 }
 
@@ -43,11 +44,17 @@ impl Metal {
    }
 }
 impl Material for Metal {
-   fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord, attenuation: &mut Vector3<f32>, scattered: &mut Ray) -> bool {
+   fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
       let reflected = Self::reflect(ray_in.direction, hit_record.normal);
-      *scattered = Ray::new(hit_record.point, reflected + self.fuzz * rand_vec3_in_unit_sphere(), ray_in.time);
-      *attenuation = self.albedo;
-      hit_record.normal.dot(&scattered.direction) > 0.
+      let scatter_dir = reflected + self.fuzz * rand_vec3_in_unit_sphere();
+      if hit_record.normal.dot(&scatter_dir) > 0. {
+         Some((
+            self.albedo,
+            Ray::new(hit_record.point, scatter_dir, ray_in.time)
+         ))
+      } else {
+         None
+      }
    }
 }
 
@@ -83,19 +90,20 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-   fn scatter(&self, ray: &Ray, hit_record: &HitRecord, attenuation: &mut Color, scattered: &mut Ray) -> bool {
-      *attenuation = Vector3::repeat(1.);
+   fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
       let refraction_ratio = if hit_record.front_face {1. / self.index_of_refraction} else { self.index_of_refraction };
-      let cos_theta = (-ray.direction.dot(&hit_record.normal)).min(1.);
+      let cos_theta = (-ray_in.direction.dot(&hit_record.normal)).min(1.);
       let sin_theta = (1. - cos_theta * cos_theta).sqrt();
       let cannot_refract = refraction_ratio * sin_theta > 1.;
       let direction = if cannot_refract || Self::reflectance(cos_theta, refraction_ratio) > get_rand()
       {
-         Metal::reflect(ray.direction, hit_record.normal)
+         Metal::reflect(ray_in.direction, hit_record.normal)
       } else {
-         Self::refract(ray.direction, hit_record.normal, refraction_ratio)
+         Self::refract(ray_in.direction, hit_record.normal, refraction_ratio)
       };
-      *scattered = Ray::new(hit_record.point, direction, ray.time);
-      true
+      Some((
+         Color::repeat(1.),
+         Ray::new(hit_record.point, direction, ray_in.time)
+          ))
    }
 }
