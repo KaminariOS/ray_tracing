@@ -1,6 +1,5 @@
 use crate::camera::Camera;
-use crate::ray::{Hittable, HittableList};
-use crate::types::Color;
+use crate::types::{Color, SharedHittable};
 use crate::Ray;
 use cfg_if::cfg_if;
 use derivative::Derivative;
@@ -25,7 +24,7 @@ pub struct Renderer {
     actual_width: u32,
     actual_height: u32,
     #[derivative(Debug = "ignore")]
-    world: HittableList,
+    world: SharedHittable,
     pub(crate) multisample: usize,
     pub(crate) max_depth: usize,
     #[derivative(Debug = "ignore")]
@@ -33,7 +32,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(width: u32, height: u32, world: HittableList) -> Renderer {
+    pub fn new(width: u32, height: u32, world: SharedHittable) -> Renderer {
         let aspect_ratio = width as f32 / height as f32;
         let aperture = 0.1;
         let dist_to_focus = 10.;
@@ -193,11 +192,11 @@ impl Renderer {
     }
 }
 
-fn ray_color(r: &Ray, world: &HittableList, depth: usize) -> Vector3<f32> {
+fn ray_color(r: &Ray, world: &SharedHittable, depth: usize) -> Vector3<f32> {
     if depth == 0 {
         return Color::zeros();
     }
-    if let Some(hit_record) = world.hit(r, 0.001, f32::INFINITY) {
+    if let Some(hit_record) = world.read().unwrap().hit(r, 0.001, f32::INFINITY) {
         // let target = hit_record.normal + rand_vec3_on_unit_sphere();
         if let Some((attenuation, scattered)) = hit_record.material.scatter(r, &hit_record) {
             return attenuation.component_mul(&ray_color(&scattered, world, depth - 1));

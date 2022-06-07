@@ -4,6 +4,7 @@ use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::types::{create_shared_mut, Color, SharedHittable, SharedMaterial, SharedSphere};
 use crate::Ray;
 use na::{Point3, Vector3};
+use crate::aabb::{AxisAlignedBoundingBox};
 
 pub struct Sphere {
     pub center0: Point3<f32>,
@@ -82,6 +83,22 @@ impl Hittable for Sphere {
         hit_record.material = self.material.clone();
         Some(hit_record)
     }
+
+    fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox> {
+        let offset = Vector3::repeat(self.radius);
+        if self.moving {
+            let center0 = self.get_center(time0);
+            let center1 = self.get_center(time1);
+            let bbox0 = AxisAlignedBoundingBox::new(center0 - offset, center0 + offset);
+            let bbox1 = AxisAlignedBoundingBox::new(center1 - offset, center1 + offset);
+            AxisAlignedBoundingBox::surrounding_box(Some(bbox0), Some(bbox1))
+        } else {
+            Some(AxisAlignedBoundingBox::new(
+                self.center0 - offset,
+                self.center0 + offset
+            ))
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -103,9 +120,10 @@ pub fn create_objs() -> HittableList {
     }
 }
 
-pub fn create_random_scene() -> HittableList {
-    let mut objects: Vec<_> = (-11..11)
-        .map(|a| (-11..11).filter_map(move |b| create_random_sphere(a, b)))
+pub fn create_random_scene() -> SharedHittable {
+    let num = 44;
+    let mut objects: Vec<_> = (-num..num)
+        .map(|a| (-num..num).filter_map(move |b| create_random_sphere(a, b)))
         .flatten()
         .map(|x| x as SharedHittable)
         .collect();
@@ -121,8 +139,7 @@ pub fn create_random_scene() -> HittableList {
         Sphere::new([4., 1., 0.], 1., material3),
     ];
     objects.extend(vec);
-
-    HittableList { objects }
+    HittableList::new_bvh(objects, 0., 1.)
 }
 
 fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {

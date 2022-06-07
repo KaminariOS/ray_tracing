@@ -1,6 +1,7 @@
 use crate::material::Lambertian;
-use crate::types::{Color, SharedHittable, SharedMaterial};
+use crate::types::{Color, create_shared_mut, Shared, SharedHittable, SharedMaterial};
 use na::{Point3, Vector3};
+use crate::aabb::{AxisAlignedBoundingBox, BVHNode};
 
 pub struct Ray {
     pub origin: Point3<f32>,
@@ -29,6 +30,7 @@ impl Default for Ray {
 
 pub trait Hittable: Send + Sync {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+    fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox>;
 }
 
 pub struct HitRecord {
@@ -76,6 +78,19 @@ impl HittableList {
     pub fn add(&mut self, object: SharedHittable) {
         self.objects.push(object)
     }
+
+    pub fn new(objects: Vec<SharedHittable>) -> Shared<Self> {
+        create_shared_mut(Self{objects})
+    }
+
+    pub fn new_bvh(objects: Vec<SharedHittable>, time0: f32, time1: f32) -> SharedHittable {
+        if  option_env!("BVH").unwrap_or("true").parse::<bool>().unwrap() {
+            log::warn!("Building BVH for {} objects", objects.len());
+            BVHNode::new(&objects, time0, time1)
+        } else {
+            Self::new(objects)
+        }
+    }
 }
 
 impl Default for HittableList {
@@ -86,21 +101,25 @@ impl Default for HittableList {
 
 impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        let mut hit_temp = HitRecord::default();
-        let mut hit_anything = false;
+        let mut hit_temp = None;
         let mut closest_so_far = t_max;
-
         for object in &self.objects {
             if let Some(new_hit) = object.read().unwrap().hit(ray, t_min, closest_so_far) {
-                hit_temp = new_hit;
-                hit_anything = true;
-                closest_so_far = hit_temp.t;
+                closest_so_far = new_hit.t;
+                hit_temp = Some(new_hit);
             }
         }
-        if hit_anything {
-            Some(hit_temp)
-        } else {
-            None
-        }
+        hit_temp
+    }
+
+    fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox> {
+        self.objects
+            .iter()
+            .fold(None,|acc, cur|
+                {
+                    let bbox = cur.read().unwrap().bounding_box(time0, time1);
+                    AxisAlignedBoundingBox::surrounding_box(acc, bbox)
+                }
+            )
     }
 }

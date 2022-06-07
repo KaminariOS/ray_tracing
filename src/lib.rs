@@ -28,6 +28,7 @@ mod rand_gen;
 mod ray;
 mod renderer;
 mod types;
+mod aabb;
 
 extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
