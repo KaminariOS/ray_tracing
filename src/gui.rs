@@ -116,10 +116,8 @@ pub struct Gui {
     pub save_img: bool,
     pub sample_count: usize,
     pub max_depth: usize,
-    pre: Option<Box<Gui>>
+    pre: Option<Box<Gui>>,
 }
-
-
 
 impl Gui {
     /// Create a `Gui`.
@@ -131,18 +129,17 @@ impl Gui {
             save_img: false,
             sample_count: 4,
             max_depth: 10,
-            pre: None
+            pre: None,
         };
         cur.pre = Some(Box::new(cur.clone()));
         cur
     }
 
     pub fn updated(&mut self) -> bool {
-
         if let Some(pre) = self.pre.take() {
-            let dirty =  *pre != *self;
+            let dirty = *pre != *self;
             self.pre = Some(Box::new(self.clone()));
-            return dirty
+            return dirty;
         }
         false
     }

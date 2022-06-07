@@ -1,5 +1,5 @@
-use na::{Point3, Vector3};
 use crate::Ray;
+use na::{Point3, Vector3};
 
 #[allow(dead_code)]
 pub struct Camera {
@@ -15,11 +15,11 @@ pub struct Camera {
     len_radius: f32,
     focus_dist: f32,
     time0: f32,
-    time1: f32
+    time1: f32,
 }
 
-use std::f32::consts::PI;
 use crate::rand_gen::{get_rand_range, rand_vec3_in_unit_disk};
+use std::f32::consts::PI;
 
 fn degree_to_radian(degree: f32) -> f32 {
     degree / 180.0 * PI
@@ -34,7 +34,7 @@ impl Camera {
         aperture: f32,
         focus_dist: f32,
         time0: f32,
-        time1: f32
+        time1: f32,
     ) -> Self {
         let theta = degree_to_radian(vfov);
         let h = (theta / 2.).tan();
@@ -48,8 +48,7 @@ impl Camera {
         let horizontal = focus_dist * viewport_width * u;
         let vertical = focus_dist * viewport_height * v;
         let origin = lookfrom;
-        let lower_left_corner =
-            origin - horizontal / 2. - vertical / 2. - w * focus_dist;
+        let lower_left_corner = origin - horizontal / 2. - vertical / 2. - w * focus_dist;
         Self {
             origin,
             horizontal,
@@ -57,27 +56,39 @@ impl Camera {
             lower_left_corner,
             vfov,
             vup,
-            w, u, v,
+            w,
+            u,
+            v,
             len_radius: aperture / 2.,
             focus_dist,
             time0,
-            time1
+            time1,
         }
     }
 
     #[cfg(feature = "window")]
     pub(crate) fn resize(&mut self, width: u32, height: u32) {
         let aspect_ratio = width as f32 / height as f32;
-        *self = Camera::new(self.origin, -self.w, self.vup, self.vfov, aspect_ratio, self.len_radius * 2., self.focus_dist, self.time0, self.time1);
+        *self = Camera::new(
+            self.origin,
+            -self.w,
+            self.vup,
+            self.vfov,
+            aspect_ratio,
+            self.len_radius * 2.,
+            self.focus_dist,
+            self.time0,
+            self.time1,
+        );
     }
 
     pub fn get_ray(&self, s: f32, t: f32) -> Ray {
         let rd = self.len_radius * rand_vec3_in_unit_disk();
         let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
-             self.origin + offset,
-             self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
-            get_rand_range(self.time0, self.time1)
+            self.origin + offset,
+            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
+            get_rand_range(self.time0, self.time1),
         )
     }
 }

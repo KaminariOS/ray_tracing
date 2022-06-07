@@ -1,7 +1,7 @@
 use crate::camera::Camera;
 use crate::ray::{Hittable, HittableList};
-use crate::{Ray};
 use crate::types::Color;
+use crate::Ray;
 use cfg_if::cfg_if;
 use derivative::Derivative;
 use na::{Point3, Vector3, Vector4};
@@ -11,7 +11,7 @@ use pixels::Pixels;
 use crate::gui::Gui;
     }
 }
-use crate::rand_gen::{get_rand};
+use crate::rand_gen::get_rand;
 
 #[allow(dead_code)]
 #[derive(Derivative)]
@@ -19,17 +19,17 @@ use crate::rand_gen::{get_rand};
 pub struct Renderer {
     pub(crate) width: u32,
     pub(crate) height: u32,
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     camera: Camera,
     scale: u32,
     actual_width: u32,
     actual_height: u32,
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     world: HittableList,
     pub(crate) multisample: usize,
     pub(crate) max_depth: usize,
-    #[derivative(Debug="ignore")]
-    pub dirty: bool
+    #[derivative(Debug = "ignore")]
+    pub dirty: bool,
 }
 
 impl Renderer {
@@ -51,18 +51,20 @@ impl Renderer {
                 aperture,
                 dist_to_focus,
                 0.,
-                1.
+                1.,
             ),
             actual_height: height,
             world,
             multisample: 4,
             max_depth: 10,
-            dirty: true
+            dirty: true,
         }
     }
 
     pub fn draw(&mut self, frame: &mut [u8]) {
-        if !self.dirty {return}
+        if !self.dirty {
+            return;
+        }
         self.dirty = false;
         log::warn!("{:?}", self);
         let now = instant::Instant::now();
@@ -101,7 +103,8 @@ impl Renderer {
                     let ray = self.camera.get_ray(u, v);
                     ray_color(&ray, &self.world, self.max_depth)
                 })
-                .fold(Vector3::zeros(), |acc, next| acc + next) / self.multisample as f32;
+                .fold(Vector3::zeros(), |acc, next| acc + next)
+                / self.multisample as f32;
             let mut rgb = rgba_float
                 .into_iter()
                 .map(Self::float_to_rgb)
@@ -192,14 +195,14 @@ impl Renderer {
 
 fn ray_color(r: &Ray, world: &HittableList, depth: usize) -> Vector3<f32> {
     if depth == 0 {
-        return Color::zeros()
+        return Color::zeros();
     }
     if let Some(hit_record) = world.hit(r, 0.001, f32::INFINITY) {
         // let target = hit_record.normal + rand_vec3_on_unit_sphere();
         if let Some((attenuation, scattered)) = hit_record.material.scatter(r, &hit_record) {
-            return attenuation.component_mul(&ray_color(&scattered, world, depth - 1))
+            return attenuation.component_mul(&ray_color(&scattered, world, depth - 1));
         }
-        return Color::zeros()
+        return Color::zeros();
     }
     let unit_direction = r.direction.normalize();
     let t = 0.5 * (unit_direction.y + 1.);

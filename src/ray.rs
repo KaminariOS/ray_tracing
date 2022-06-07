@@ -1,11 +1,11 @@
+use crate::material::Lambertian;
+use crate::types::{Color, SharedHittable, SharedMaterial};
 use na::{Point3, Vector3};
-use crate::types::{SharedHittable, Color, SharedMaterial};
-use crate::material::{Lambertian};
 
 pub struct Ray {
     pub origin: Point3<f32>,
     pub direction: Vector3<f32>,
-    pub time: f32
+    pub time: f32,
 }
 
 impl Ray {
@@ -17,7 +17,7 @@ impl Ray {
         Self {
             origin,
             direction: direction.normalize(),
-            time
+            time,
         }
     }
 }
@@ -36,7 +36,7 @@ pub struct HitRecord {
     pub(crate) normal: Vector3<f32>,
     pub(crate) t: f32,
     pub front_face: bool,
-    pub material: SharedMaterial
+    pub material: SharedMaterial,
 }
 
 impl Default for HitRecord {
@@ -46,7 +46,7 @@ impl Default for HitRecord {
             normal: Vector3::zeros(),
             t: f32::MAX,
             front_face: false,
-            material: Lambertian::new(Color::from([0.8, 0.8, 0.]))
+            material: Lambertian::new(Color::from([0.8, 0.8, 0.])),
         }
     }
 }
@@ -91,11 +91,7 @@ impl Hittable for HittableList {
         let mut closest_so_far = t_max;
 
         for object in &self.objects {
-            if let Some(new_hit) = object
-                .read()
-                .unwrap()
-                .hit(ray, t_min, closest_so_far)
-            {
+            if let Some(new_hit) = object.read().unwrap().hit(ray, t_min, closest_so_far) {
                 hit_temp = new_hit;
                 hit_anything = true;
                 closest_so_far = hit_temp.t;

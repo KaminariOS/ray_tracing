@@ -1,10 +1,9 @@
-use crate::ray::{HitRecord, Hittable, HittableList};
-use crate::{Ray};
-use na::{Point3, Vector3};
-use std::sync::{Arc, RwLock};
 use crate::material::{Dielectric, Lambertian, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
-use crate::types::{Color, create_shared_mut, SharedHittable, SharedMaterial, SharedSphere};
+use crate::ray::{HitRecord, Hittable, HittableList};
+use crate::types::{create_shared_mut, Color, SharedHittable, SharedMaterial, SharedSphere};
+use crate::Ray;
+use na::{Point3, Vector3};
 
 pub struct Sphere {
     pub center0: Point3<f32>,
@@ -13,7 +12,7 @@ pub struct Sphere {
     material: SharedMaterial,
     time0: f32,
     time1: f32,
-    moving: bool
+    moving: bool,
 }
 
 impl Sphere {
@@ -25,10 +24,17 @@ impl Sphere {
             time1: 0.,
             radius,
             material,
-            moving: false
+            moving: false,
         })
     }
-    pub fn new_moving(center0: [f32; 3], center1: [f32; 3], time0: f32, time1: f32, radius: f32, material: SharedMaterial) -> SharedSphere{
+    pub fn new_moving(
+        center0: [f32; 3],
+        center1: [f32; 3],
+        time0: f32,
+        time1: f32,
+        radius: f32,
+        material: SharedMaterial,
+    ) -> SharedSphere {
         float_eq::assert_float_ne!(time0, time1, rmin <= f32::EPSILON);
         create_shared_mut(Sphere {
             center0: Point3::from(center0),
@@ -37,17 +43,17 @@ impl Sphere {
             time1,
             radius,
             material,
-            moving: true
+            moving: true,
         })
     }
     fn get_center(&self, time: f32) -> Point3<f32> {
-         if self.moving {
-            self.center0 + (time - self.time0) / (self.time1 - self.time0) * (self.center1 - self.center0)
-        }
-        else {
+        if self.moving {
+            self.center0
+                + (time - self.time0) / (self.time1 - self.time0) * (self.center1 - self.center0)
+        } else {
             self.center0
         }
-}
+    }
 }
 
 impl Hittable for Sphere {
@@ -71,8 +77,7 @@ impl Hittable for Sphere {
         let mut hit_record = HitRecord::default();
         hit_record.t = root;
         hit_record.point = ray.at(root);
-        let outward_normal = (hit_record.point - self.get_center(ray
-            .time)) / self.radius;
+        let outward_normal = (hit_record.point - self.get_center(ray.time)) / self.radius;
         hit_record.set_face_normal(ray, outward_normal);
         hit_record.material = self.material.clone();
         Some(hit_record)
@@ -88,25 +93,20 @@ pub fn create_objs() -> HittableList {
     let material_left = Dielectric::new(1.5);
     let material_right = Metal::new(Color::from([0.8, 0.6, 0.2]), 0.);
     HittableList {
-        objects:
-        vec![
+        objects: vec![
             Sphere::new([0., 0., -1.], 0.5, material_center),
             Sphere::new([0., -100.5, -1.], 100., material_ground),
             Sphere::new([-1., 0., -1.], 0.5, material_left.clone()),
             Sphere::new([-1., 0., -1.], -0.45, material_left),
             Sphere::new([1., 0., -1.], 0.5, material_right),
-        ]
+        ],
     }
 }
 
 pub fn create_random_scene() -> HittableList {
     let mut objects: Vec<_> = (-11..11)
-        .map(|a|
-            (-11..11)
-                .filter_map(move |b|
-                             create_random_sphere(a, b)
-                )
-        ).flatten()
+        .map(|a| (-11..11).filter_map(move |b| create_random_sphere(a, b)))
+        .flatten()
         .map(|x| x as SharedHittable)
         .collect();
 
@@ -118,16 +118,14 @@ pub fn create_random_scene() -> HittableList {
         Sphere::new([0., -1000., 0.], 1000., material_ground),
         Sphere::new([0., 1., 0.], 1., material1),
         Sphere::new([-4., 1., 0.], 1., material2),
-        Sphere::new([4., 1., 0.], 1., material3)
+        Sphere::new([4., 1., 0.], 1., material3),
     ];
     objects.extend(vec);
 
-    HittableList {
-        objects
-    }
+    HittableList { objects }
 }
 
-fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere>{
+fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
     let a = a as f32;
     let b = b as f32;
     let mat = get_rand();
@@ -147,9 +145,11 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere>{
         };
         Some(if moving {
             let center2 = center + Vector3::from([0., get_rand_range(0., 0.5), 0.]);
-              Sphere::new_moving(center.into(), center2.into(), 0., 1., 0.2, material)
+            Sphere::new_moving(center.into(), center2.into(), 0., 1., 0.2, material)
         } else {
             Sphere::new(center.into(), 0.2, material)
         })
-    }else { None }
+    } else {
+        None
+    }
 }

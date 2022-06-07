@@ -17,23 +17,21 @@ mod winit_egui;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::geo::{create_random_scene};
+use crate::geo::create_random_scene;
 use crate::ray::{Hittable, Ray};
 use crate::renderer::Renderer;
 
 mod camera;
 mod geo;
+mod material;
+mod rand_gen;
 mod ray;
 mod renderer;
-mod rand_gen;
-mod material;
 mod types;
 
 extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
-
-
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 #[cfg(feature = "window")]
@@ -168,7 +166,6 @@ pub async fn run() {
                 {
                     *control_flow = ControlFlow::Exit;
                 }
-
             }
             _ => (),
         }
@@ -180,8 +177,14 @@ pub fn image_mode() {
     let scale = option_env!("SCALE").unwrap_or("1").parse::<u32>().unwrap();
     let (width, height) = (WIDTH / scale, HEIGHT / scale);
     let mut renderer = Renderer::new(width, height, create_random_scene());
-    renderer.multisample = option_env!("SAMPLE").unwrap_or("4").parse::<usize>().unwrap();
-    renderer.max_depth = option_env!("DEPTH").unwrap_or("10").parse::<usize>().unwrap();
+    renderer.multisample = option_env!("SAMPLE")
+        .unwrap_or("4")
+        .parse::<usize>()
+        .unwrap();
+    renderer.max_depth = option_env!("DEPTH")
+        .unwrap_or("10")
+        .parse::<usize>()
+        .unwrap();
     let mut pixels = vec![0; (width * height * 4) as usize];
     renderer.draw(&mut pixels);
     image::save_buffer(
@@ -191,5 +194,5 @@ pub fn image_mode() {
         renderer.height,
         image::ColorType::Rgba8,
     )
-        .ok();
+    .ok();
 }

@@ -1,8 +1,8 @@
-use std::sync::{Arc, RwLock};
-use na::Vector3;
 use crate::geo::Sphere;
-use crate::Hittable;
 use crate::material::Material;
+use crate::Hittable;
+use na::Vector3;
+use std::sync::{Arc, RwLock};
 
 pub type Color = Vector3<f32>;
 pub type Shared<T> = Arc<RwLock<T>>;
