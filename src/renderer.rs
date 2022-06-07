@@ -3,6 +3,7 @@ use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::{Color, Ray};
 use cfg_if::cfg_if;
 use derivative::Derivative;
+use indicatif::ProgressStyle;
 use na::{Point3, Vector3, Vector4};
 cfg_if! {
     if #[cfg(feature = "window")] {
@@ -34,6 +35,8 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(width: u32, height: u32, world: HittableList) -> Renderer {
         let aspect_ratio = width as f32 / height as f32;
+        let aperture = 0.1;
+        let dist_to_focus = 10.;
         Self {
             width,
             height,
@@ -45,8 +48,10 @@ impl Renderer {
                 Vector3::y(),
                 20.,
                 aspect_ratio,
-                0.1,
-                10.
+                aperture,
+                dist_to_focus,
+                0.,
+                1.
             ),
             actual_height: height,
             world,
@@ -64,9 +69,12 @@ impl Renderer {
         let pixel_count = frame.len() / 4;
         cfg_if! {
             if #[cfg(feature = "progress")] {
-                use indicatif::ProgressBar;
+                use indicatif::{ProgressBar, ProgressStyle};
                 let work_div = pixel_count / 100;
                 let pb = ProgressBar::new( (pixel_count / work_div) as u64);
+                pb.set_style(
+                    ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] {wide_bar} {pos}/{len}")
+                );
             }
         }
         assert_eq!(pixel_count as u32, self.width * self.height);

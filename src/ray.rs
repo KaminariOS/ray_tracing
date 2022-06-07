@@ -6,23 +6,25 @@ use crate::material::{Lambertian, Material};
 pub struct Ray {
     pub origin: Point3<f32>,
     pub direction: Vector3<f32>,
+    pub time: f32
 }
 
 impl Ray {
     pub fn at(&self, t: f32) -> Point3<f32> {
         self.origin + t * self.direction
     }
-    pub fn new(origin: Point3<f32>, direction: Vector3<f32>) -> Self {
+    pub fn new(origin: Point3<f32>, direction: Vector3<f32>, time: f32) -> Self {
         assert_ne!(direction.norm_squared(), 0.);
         Self {
             origin,
-            direction: direction.normalize()
+            direction: direction.normalize(),
+            time
         }
     }
 }
 impl Default for Ray {
     fn default() -> Self {
-        Self::new(Point3::origin(), Vector3::identity())
+        Self::new(Point3::origin(), Vector3::identity(), 0.)
     }
 }
 

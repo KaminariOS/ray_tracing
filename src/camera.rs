@@ -13,11 +13,13 @@ pub struct Camera {
     v: Vector3<f32>,
     vup: Vector3<f32>,
     len_radius: f32,
-    focus_dist: f32
+    focus_dist: f32,
+    time0: f32,
+    time1: f32
 }
 
 use std::f32::consts::PI;
-use crate::rand_gen::rand_vec3_in_unit_disk;
+use crate::rand_gen::{get_rand_range, rand_vec3_in_unit_disk};
 
 fn degree_to_radian(degree: f32) -> f32 {
     degree / 180.0 * PI
@@ -30,7 +32,9 @@ impl Camera {
         vfov: f32,
         aspect_ratio: f32,
         aperture: f32,
-        focus_dist: f32
+        focus_dist: f32,
+        time0: f32,
+        time1: f32
     ) -> Self {
         let theta = degree_to_radian(vfov);
         let h = (theta / 2.).tan();
@@ -55,14 +59,16 @@ impl Camera {
             vup,
             w, u, v,
             len_radius: aperture / 2.,
-            focus_dist
+            focus_dist,
+            time0,
+            time1
         }
     }
 
     #[cfg(feature = "window")]
     pub(crate) fn resize(&mut self, width: u32, height: u32) {
         let aspect_ratio = width as f32 / height as f32;
-        *self = Camera::new(self.origin, -self.w, self.vup, self.vfov, aspect_ratio, self.len_radius * 2., self.focus_dist);
+        *self = Camera::new(self.origin, -self.w, self.vup, self.vfov, aspect_ratio, self.len_radius * 2., self.focus_dist, self.time0, self.time1);
     }
 
     pub fn get_ray(&self, s: f32, t: f32) -> Ray {
@@ -70,19 +76,8 @@ impl Camera {
         let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
              self.origin + offset,
-             self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset
+             self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
+            get_rand_range(self.time0, self.time1)
         )
     }
-
-    // fn get_horizontal(&self) -> Vector3<f32> {
-    //     Vector3::from([self.viewport_width, 0., 0.])
-    // }
-    //
-    // fn get_vertical(&self) -> Vector3<f32> {
-    //     Vector3::from([0., self.viewport_height, 0.])
-    // }
-    //
-    // fn get_lower_left_corner(&self) -> Point3<f32> {
-    //     self.origin - self.get_horizontal() / 2. - self.get_vertical() / 2. - Vector3::from([0., 0., self.focal_length])
-    // }
 }

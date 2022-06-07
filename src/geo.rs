@@ -1,25 +1,57 @@
 use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::{Color, Ray};
-use na::Point3;
+use na::{Point3, Vector3};
 use std::sync::{Arc, RwLock};
 use crate::material::{Dielectric, Lambertian, Material, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
 
 pub struct Sphere {
-    pub center: Point3<f32>,
+    pub center0: Point3<f32>,
+    pub center1: Point3<f32>,
     pub radius: f32,
-    material: Arc<dyn Material>
+    material: Arc<dyn Material>,
+    time0: f32,
+    time1: f32,
+    moving: bool
 }
 
 impl Sphere {
     pub fn new(center: [f32; 3], radius: f32, material: Arc<dyn Material>) -> Arc<RwLock<Sphere>> {
-        Arc::new(RwLock::new(Sphere { center: Point3::from(center), radius, material }))
+        Arc::new(RwLock::new(Sphere {
+            center0: Point3::from(center),
+            center1: Point3::from(center),
+            time0: 0.,
+            time1: 0.,
+            radius,
+            material,
+            moving: false
+        }))
     }
+    pub fn new_moving(center0: [f32; 3], center1: [f32; 3], time0: f32, time1: f32, radius: f32, material: Arc<dyn Material>) -> Arc<RwLock<Sphere>>{
+        float_eq::assert_float_ne!(time0, time1, rmin <= f32::EPSILON);
+        Arc::new(RwLock::new(Sphere {
+            center0: Point3::from(center0),
+            center1: Point3::from(center1),
+            time0,
+            time1,
+            radius,
+            material,
+            moving: true
+        }))
+    }
+    fn get_center(&self, time: f32) -> Point3<f32> {
+         if self.moving {
+            self.center0 + (time - self.time0) / (self.time1 - self.time0) * (self.center1 - self.center0)
+        }
+        else {
+            self.center0
+        }
+}
 }
 
 impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, hit_record: &mut HitRecord) -> bool {
-        let oc = ray.origin - self.center;
+        let oc = ray.origin - self.get_center(ray.time);
         let a = ray.direction.norm_squared();
         let half_b = oc.dot(&ray.direction);
         let c = oc.norm_squared() - self.radius * self.radius;
@@ -37,7 +69,8 @@ impl Hittable for Sphere {
         }
         hit_record.t = root;
         hit_record.point = ray.at(root);
-        let outward_normal = (hit_record.point - self.center) / self.radius;
+        let outward_normal = (hit_record.point - self.get_center(ray
+            .time)) / self.radius;
         hit_record.set_face_normal(ray, outward_normal);
         hit_record.material = self.material.clone();
         true
@@ -97,9 +130,11 @@ fn create_random_sphere(a: i32, b: i32) -> Option<Arc<RwLock<Sphere>>>{
     let b = b as f32;
     let mat = get_rand();
     let center = Point3::from([a + 0.9 * get_rand(), 0.2, b + 0.9 * get_rand()]);
+    let mut moving = false;
     if (center - Point3::from([4., 0.2, 0.])).norm() > 0.9 {
         let material: Arc<dyn Material> = if mat < 0.8 {
             let albedo = get_rand_vec3_range(0., 1.).component_mul(&get_rand_vec3_range(0., 1.));
+            moving = true;
             Lambertian::new(albedo)
         } else if mat < 0.95 {
             let albedo = get_rand_vec3_range(0.5, 1.);
@@ -108,6 +143,11 @@ fn create_random_sphere(a: i32, b: i32) -> Option<Arc<RwLock<Sphere>>>{
         } else {
             Dielectric::new(1.5)
         };
-        Some(Sphere::new(center.into(), 0.2, material))
+        Some(if moving {
+            let center2 = center + Vector3::from([0., get_rand_range(0., 0.5), 0.]);
+              Sphere::new_moving(center.into(), center2.into(), 0., 1., 0.2, material)
+        } else {
+            Sphere::new(center.into(), 0.2, material)
+        })
     }else { None }
 }
