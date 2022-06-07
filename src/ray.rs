@@ -1,7 +1,6 @@
 use na::{Point3, Vector3};
-use std::sync::Arc;
-use crate::types::{SharedHittable, Color};
-use crate::material::{Lambertian, Material};
+use crate::types::{SharedHittable, Color, SharedMaterial};
+use crate::material::{Lambertian};
 
 pub struct Ray {
     pub origin: Point3<f32>,
@@ -37,7 +36,7 @@ pub struct HitRecord {
     pub(crate) normal: Vector3<f32>,
     pub(crate) t: f32,
     pub front_face: bool,
-    pub material: Arc<dyn Material>
+    pub material: SharedMaterial
 }
 
 impl Default for HitRecord {

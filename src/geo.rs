@@ -2,23 +2,23 @@ use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::{Ray};
 use na::{Point3, Vector3};
 use std::sync::{Arc, RwLock};
-use crate::material::{Dielectric, Lambertian, Material, Metal};
+use crate::material::{Dielectric, Lambertian, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
-use crate::types::{Color, SharedHittable, SharedSphere};
+use crate::types::{Color, create_shared_mut, SharedHittable, SharedMaterial, SharedSphere};
 
 pub struct Sphere {
     pub center0: Point3<f32>,
     pub center1: Point3<f32>,
     pub radius: f32,
-    material: Arc<dyn Material>,
+    material: SharedMaterial,
     time0: f32,
     time1: f32,
     moving: bool
 }
 
 impl Sphere {
-    pub fn new(center: [f32; 3], radius: f32, material: Arc<dyn Material>) -> Arc<RwLock<Sphere>> {
-        Arc::new(RwLock::new(Sphere {
+    pub fn new(center: [f32; 3], radius: f32, material: SharedMaterial) -> SharedSphere {
+        create_shared_mut(Sphere {
             center0: Point3::from(center),
             center1: Point3::from(center),
             time0: 0.,
@@ -26,11 +26,11 @@ impl Sphere {
             radius,
             material,
             moving: false
-        }))
+        })
     }
-    pub fn new_moving(center0: [f32; 3], center1: [f32; 3], time0: f32, time1: f32, radius: f32, material: Arc<dyn Material>) -> Arc<RwLock<Sphere>>{
+    pub fn new_moving(center0: [f32; 3], center1: [f32; 3], time0: f32, time1: f32, radius: f32, material: SharedMaterial) -> SharedSphere{
         float_eq::assert_float_ne!(time0, time1, rmin <= f32::EPSILON);
-        Arc::new(RwLock::new(Sphere {
+        create_shared_mut(Sphere {
             center0: Point3::from(center0),
             center1: Point3::from(center1),
             time0,
@@ -38,7 +38,7 @@ impl Sphere {
             radius,
             material,
             moving: true
-        }))
+        })
     }
     fn get_center(&self, time: f32) -> Point3<f32> {
          if self.moving {
@@ -134,7 +134,7 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere>{
     let center = Point3::from([a + 0.9 * get_rand(), 0.2, b + 0.9 * get_rand()]);
     let mut moving = false;
     if (center - Point3::from([4., 0.2, 0.])).norm() > 0.9 {
-        let material: Arc<dyn Material> = if mat < 0.8 {
+        let material: SharedMaterial = if mat < 0.8 {
             let albedo = get_rand_vec3_range(0., 1.).component_mul(&get_rand_vec3_range(0., 1.));
             moving = true;
             Lambertian::new(albedo)
