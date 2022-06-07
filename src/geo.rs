@@ -1,9 +1,10 @@
 use crate::ray::{HitRecord, Hittable, HittableList};
-use crate::{Color, Ray};
+use crate::{Ray};
 use na::{Point3, Vector3};
 use std::sync::{Arc, RwLock};
 use crate::material::{Dielectric, Lambertian, Material, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
+use crate::types::{Color, SharedHittable, SharedSphere};
 
 pub struct Sphere {
     pub center0: Point3<f32>,
@@ -106,14 +107,14 @@ pub fn create_random_scene() -> HittableList {
                              create_random_sphere(a, b)
                 )
         ).flatten()
-        .map(|x| x as Arc<RwLock<dyn Hittable>>)
+        .map(|x| x as SharedHittable)
         .collect();
 
     let material_ground = Lambertian::new(Color::from([0.5, 0.5, 0.5]));
     let material1 = Dielectric::new(1.5);
     let material2 = Lambertian::new(Color::from([0.4, 0.2, 0.1]));
     let material3 = Metal::new(Color::from([0.7, 0.6, 0.5]), 0.);
-    let vec: Vec<Arc<RwLock<dyn Hittable>>> = vec![
+    let vec: Vec<SharedHittable> = vec![
         Sphere::new([0., -1000., 0.], 1000., material_ground),
         Sphere::new([0., 1., 0.], 1., material1),
         Sphere::new([-4., 1., 0.], 1., material2),
@@ -126,7 +127,7 @@ pub fn create_random_scene() -> HittableList {
     }
 }
 
-fn create_random_sphere(a: i32, b: i32) -> Option<Arc<RwLock<Sphere>>>{
+fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere>{
     let a = a as f32;
     let b = b as f32;
     let mat = get_rand();

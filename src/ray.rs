@@ -1,6 +1,6 @@
 use na::{Point3, Vector3};
-use std::sync::{Arc, RwLock};
-use crate::Color;
+use std::sync::Arc;
+use crate::types::{SharedHittable, Color};
 use crate::material::{Lambertian, Material};
 
 pub struct Ray {
@@ -65,7 +65,7 @@ impl HitRecord {
 }
 
 pub struct HittableList {
-    pub objects: Vec<Arc<RwLock<dyn Hittable>>>,
+    pub objects: Vec<SharedHittable>,
 }
 
 impl HittableList {
@@ -74,7 +74,7 @@ impl HittableList {
         self.objects.clear()
     }
     #[allow(dead_code)]
-    pub fn add(&mut self, object: Arc<RwLock<dyn Hittable>>) {
+    pub fn add(&mut self, object: SharedHittable) {
         self.objects.push(object)
     }
 }

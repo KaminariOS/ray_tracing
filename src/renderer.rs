@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::ray::{Hittable, HittableList};
-use crate::{Color, Ray};
+use crate::{Ray};
+use crate::types::Color;
 use cfg_if::cfg_if;
 use derivative::Derivative;
 use na::{Point3, Vector3, Vector4};

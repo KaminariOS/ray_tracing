@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-use na::Vector3;
 
 cfg_if! {
     if #[cfg(feature = "window")] {
@@ -19,7 +18,7 @@ mod winit_egui;
 use wasm_bindgen::prelude::*;
 
 use crate::geo::{create_random_scene};
-use crate::ray::Ray;
+use crate::ray::{Hittable, Ray};
 use crate::renderer::Renderer;
 
 mod camera;
@@ -28,12 +27,13 @@ mod ray;
 mod renderer;
 mod rand_gen;
 mod material;
+mod types;
 
 extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
 
-type Color = Vector3<f32>;
+
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 #[cfg(feature = "window")]

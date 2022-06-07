@@ -1,8 +1,9 @@
 use std::sync::Arc;
 use na::Vector3;
-use crate::{Color, Ray};
+use crate::{Ray};
 use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere};
 use crate::ray::HitRecord;
+use crate::types::Color;
 
 pub trait Material: Sync + Send {
    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)>;
