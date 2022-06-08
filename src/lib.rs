@@ -12,14 +12,13 @@ use winit_input_helper::WinitInputHelper;
 mod gui;
 use gui::Framework;
 mod winit_egui;
+use crate::renderer::Renderer;
     }
 }
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::geo::create_random_scene;
 use crate::ray::{Hittable, Ray};
-use crate::renderer::Renderer;
 
 mod camera;
 mod geo;
@@ -30,6 +29,9 @@ mod renderer;
 mod types;
 mod aabb;
 mod texture;
+mod scene;
+#[cfg(feature = "cli")]
+pub mod cli;
 
 extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
@@ -105,7 +107,9 @@ pub async fn run() {
             .expect("Pixels error")
     };
     let mut framework = Framework::new(&window, &pixels);
-    let mut renderer = Renderer::new(WIDTH, HEIGHT, create_random_scene());
+
+    use crate::scene::select_scene;
+    let mut renderer = Renderer::new(WIDTH, HEIGHT, select_scene("random"));
     renderer.update_from_gui(&framework.gui, &mut pixels);
     let mut input = WinitInputHelper::new();
     // let mut last = instant::Instant::now();
@@ -174,27 +178,3 @@ pub async fn run() {
     });
 }
 
-#[cfg(feature = "windowless")]
-pub fn image_mode() {
-    let scale = option_env!("SCALE").unwrap_or("1").parse::<u32>().unwrap();
-    let (width, height) = (WIDTH / scale, HEIGHT / scale);
-    let mut renderer = Renderer::new(width, height, create_random_scene());
-    renderer.multisample = option_env!("SAMPLE")
-        .unwrap_or("4")
-        .parse::<usize>()
-        .unwrap();
-    renderer.max_depth = option_env!("DEPTH")
-        .unwrap_or("10")
-        .parse::<usize>()
-        .unwrap();
-    let mut pixels = vec![0; (width * height * 4) as usize];
-    renderer.draw(&mut pixels);
-    image::save_buffer(
-        "screenshot.png",
-        &pixels,
-        renderer.width,
-        renderer.height,
-        image::ColorType::Rgba8,
-    )
-    .ok();
-}

@@ -65,7 +65,7 @@ impl Renderer {
             return;
         }
         self.dirty = false;
-        log::warn!("{:?}", self);
+        log::info!("{:?}", self);
         let now = instant::Instant::now();
         let pixel_count = frame.len() / 4;
         cfg_if! {
@@ -115,7 +115,7 @@ impl Renderer {
         #[cfg(feature = "progress")]
         pb.finish_with_message("Done");
         let seconds = now.elapsed().as_secs();
-        log::warn!("Time: {}min {}s", seconds / 60, seconds % 60);
+        log::info!("Time: {}min {}s", seconds / 60, seconds % 60);
     }
 
     #[allow(dead_code)]

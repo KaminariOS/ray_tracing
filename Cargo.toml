@@ -6,6 +6,8 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.dev]
+opt-level = 3
 
 [features]
 web = ["window"]
@@ -13,7 +15,7 @@ default = []
 progress = ["indicatif"]
 window = ["wgpu"]
 local = ["window", "rayon", "progress", "pollster"]
-windowless = ["rayon", "progress"]
+cli = ["rayon", "progress", "clap"]
 
 [dependencies]
 cfg-if = "1.0.0"
@@ -32,6 +34,7 @@ egui-wgpu = { path = "../egui-wgpu"}
 derivative = "2.2.0"
 float_eq = "1.0.0"
 itertools = "0.10.3"
+clap = {version = "3.1.18", optional = true, features = ["derive"]}
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

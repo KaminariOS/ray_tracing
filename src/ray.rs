@@ -87,7 +87,7 @@ impl HittableList {
 
     pub fn new_bvh(objects: Vec<SharedHittable>, time0: f32, time1: f32) -> SharedHittable {
         if  option_env!("BVH").unwrap_or("true").parse::<bool>().unwrap() {
-            log::warn!("Building BVH for {} objects", objects.len());
+            log::info!("Building BVH for {} objects", objects.len());
             BVHNode::new(&objects, time0, time1)
         } else {
             Self::new(objects)
