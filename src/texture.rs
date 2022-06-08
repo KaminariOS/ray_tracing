@@ -1,5 +1,6 @@
 use crate::types::{create_shared_mut, Color, Shared, SharedTexture};
 use na::Point3;
+use crate::perlin::Perlin;
 
 pub trait Texture: Sync + Send {
     fn value(&self, uv: (f32, f32), p: Point3<f32>) -> Color;
@@ -40,5 +41,27 @@ impl Texture for CheckerTexture {
         let sines = p.iter().fold(1.0, |acc, &cur| acc * (10. * cur).sin());
         let tex = if sines < 0. { &self.odd } else { &self.even };
         tex.read().unwrap().value(uv, p)
+    }
+}
+
+pub struct NoiseTexture {
+    noise: Perlin,
+    scale: f32
+}
+
+impl NoiseTexture {
+    pub fn new(scale: f32) -> Shared<Self> {
+        create_shared_mut(Self{
+            noise: Perlin::new(),
+            scale
+        })
+    }
+}
+
+impl Texture for NoiseTexture {
+    fn value(&self, _uv: (f32, f32), p: Point3<f32>) -> Color {
+       // Color::from([1., 1., 1.]) * self.noise.turb(self.scale * p, None)
+
+        Color::from([1., 1., 1.]) * 0.5 * (1. + (self.scale * p.z + 10. * self.noise.turb(p, None)).sin())
     }
 }

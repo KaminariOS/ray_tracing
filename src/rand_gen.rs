@@ -14,6 +14,10 @@ pub fn get_rand_int_range(min: i32, max: i32) -> i32 {
     get_rand_range(min as f32, max as f32) as i32
 }
 
+pub fn get_rand_usize_range(min: usize, max: usize) -> usize {
+    get_rand_range(min as f32, max as f32) as usize
+}
+
 pub fn get_rand_vec3_range(min: f32, max: f32) -> Vector3<f32> {
     Vector3::from([
         get_rand_range(min, max),

@@ -2,7 +2,7 @@ use crate::geo::Sphere;
 use crate::material::{Dielectric, Lambertian, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
 use crate::ray::HittableList;
-use crate::texture::CheckerTexture;
+use crate::texture::{CheckerTexture, NoiseTexture};
 use crate::types::{Color, SharedHittable, SharedMaterial, SharedSphere};
 use na::{Point3, Vector3};
 
@@ -85,6 +85,7 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
 pub fn select_scene(name: &str) -> SharedHittable {
     match name {
         "random" => create_random_scene(),
+        "2psp" => two_perlin_spheres(),
         "2sp" | _ => two_spheres(),
     }
 }
@@ -96,4 +97,14 @@ fn two_spheres() -> SharedHittable {
         Sphere::new([0., -10., 0.], 10., mat.clone()),
         Sphere::new([0., 10., 0.], 10., mat),
     ])
+}
+
+fn two_perlin_spheres() -> SharedHittable {
+    let pertex = NoiseTexture::new(4.);
+    HittableList::new(
+        vec![
+            Sphere::new([0., -1000., 0.], 1000., Lambertian::new(pertex.clone())),
+            Sphere::new([0., 2., 0.], 2., Lambertian::new(pertex))
+        ]
+    )
 }
