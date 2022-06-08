@@ -11,7 +11,7 @@ pub fn get_rand_range(min: f32, max: f32) -> f32 {
     min + (max - min) * get_rand()
 }
 pub fn get_rand_int_range(min: i32, max: i32) -> i32 {
-   get_rand_range(min as f32, max as f32) as i32
+    get_rand_range(min as f32, max as f32) as i32
 }
 
 pub fn get_rand_vec3_range(min: f32, max: f32) -> Vector3<f32> {
@@ -54,4 +54,3 @@ pub fn rand_vec3_in_unit_disk() -> Vector3<f32> {
         return p;
     }
 }
-

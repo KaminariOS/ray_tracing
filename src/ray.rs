@@ -1,7 +1,7 @@
-use crate::material::Lambertian;
-use crate::types::{Color, create_shared_mut, Shared, SharedHittable, SharedMaterial};
-use na::{Point3, Vector3};
 use crate::aabb::{AxisAlignedBoundingBox, BVHNode};
+use crate::material::Lambertian;
+use crate::types::{create_shared_mut, Color, Shared, SharedHittable, SharedMaterial};
+use na::{Point3, Vector3};
 
 pub struct Ray {
     pub origin: Point3<f32>,
@@ -82,11 +82,15 @@ impl HittableList {
     }
 
     pub fn new(objects: Vec<SharedHittable>) -> Shared<Self> {
-        create_shared_mut(Self{objects})
+        create_shared_mut(Self { objects })
     }
 
     pub fn new_bvh(objects: Vec<SharedHittable>, time0: f32, time1: f32) -> SharedHittable {
-        if  option_env!("BVH").unwrap_or("true").parse::<bool>().unwrap() {
+        if option_env!("BVH")
+            .unwrap_or("true")
+            .parse::<bool>()
+            .unwrap()
+        {
             log::info!("Building BVH for {} objects", objects.len());
             BVHNode::new(&objects, time0, time1)
         } else {
@@ -115,13 +119,9 @@ impl Hittable for HittableList {
     }
 
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox> {
-        self.objects
-            .iter()
-            .fold(None,|acc, cur|
-                {
-                    let bbox = cur.read().unwrap().bounding_box(time0, time1);
-                    AxisAlignedBoundingBox::surrounding_box(acc, bbox)
-                }
-            )
+        self.objects.iter().fold(None, |acc, cur| {
+            let bbox = cur.read().unwrap().bounding_box(time0, time1);
+            AxisAlignedBoundingBox::surrounding_box(acc, bbox)
+        })
     }
 }

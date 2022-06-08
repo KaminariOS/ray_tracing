@@ -1,17 +1,17 @@
 use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere};
 use crate::ray::HitRecord;
+use crate::texture::SolidColor;
 use crate::types::{Color, SharedTexture};
 use crate::Ray;
 use na::Vector3;
 use std::sync::Arc;
-use crate::texture::SolidColor;
 
 pub trait Material: Sync + Send {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)>;
 }
 
 pub struct Lambertian {
-    albedo: SharedTexture
+    albedo: SharedTexture,
 }
 
 impl Lambertian {
@@ -23,7 +23,6 @@ impl Lambertian {
     }
 }
 
-
 impl Material for Lambertian {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
         let mut scatter_dir = hit_record.normal + rand_vec3_on_unit_sphere();
@@ -31,7 +30,10 @@ impl Material for Lambertian {
             scatter_dir = hit_record.normal;
         }
         Some((
-            self.albedo.read().unwrap().value(hit_record.uv, hit_record.point),
+            self.albedo
+                .read()
+                .unwrap()
+                .value(hit_record.uv, hit_record.point),
             Ray::new(hit_record.point, scatter_dir, ray_in.time),
         ))
     }

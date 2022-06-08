@@ -1,7 +1,7 @@
-use clap::Parser;
-use crate::{HEIGHT, WIDTH};
 use crate::renderer::Renderer;
 use crate::scene::select_scene;
+use crate::{HEIGHT, WIDTH};
+use clap::Parser;
 
 /// Get ray tracing parameters
 #[derive(Parser, Debug)]
@@ -14,7 +14,7 @@ struct Args {
     #[clap(short, long, default_value_t = 10)]
     down_scale: u32,
     #[clap(long, default_value = "random")]
-    scene: String
+    scene: String,
 }
 
 pub fn image_mode() {
@@ -33,5 +33,5 @@ pub fn image_mode() {
         renderer.height,
         image::ColorType::Rgba8,
     )
-        .ok();
+    .ok();
 }

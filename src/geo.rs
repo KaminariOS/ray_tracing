@@ -1,8 +1,8 @@
+use crate::aabb::AxisAlignedBoundingBox;
 use crate::ray::{HitRecord, Hittable};
 use crate::types::{create_shared_mut, SharedMaterial, SharedSphere};
 use crate::Ray;
 use na::{Point3, Vector3};
-use crate::aabb::{AxisAlignedBoundingBox};
 
 const PI: f32 = std::f32::consts::PI;
 
@@ -102,9 +102,8 @@ impl Hittable for Sphere {
         } else {
             Some(AxisAlignedBoundingBox::new(
                 self.center0 - offset,
-                self.center0 + offset
+                self.center0 + offset,
             ))
         }
     }
 }
-

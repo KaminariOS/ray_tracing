@@ -1,16 +1,16 @@
-use na::{Point3, Vector3};
 use crate::geo::Sphere;
 use crate::material::{Dielectric, Lambertian, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
 use crate::ray::HittableList;
 use crate::texture::CheckerTexture;
 use crate::types::{Color, SharedHittable, SharedMaterial, SharedSphere};
+use na::{Point3, Vector3};
 
 #[allow(dead_code)]
 fn create_objs() -> HittableList {
     let material_ground = Lambertian::new(CheckerTexture::new(
         Color::from([0.2, 0.3, 0.1]),
-        Color::from([0.9, 0.9, 0.9])
+        Color::from([0.9, 0.9, 0.9]),
     ));
     let material_center = Lambertian::from_color(Color::from([0.1, 0.2, 0.5]));
     // let material_center = Dielectric::new(1.5);
@@ -38,7 +38,7 @@ fn create_random_scene() -> SharedHittable {
 
     let material_ground = Lambertian::new(CheckerTexture::new(
         Color::from([0.2, 0.3, 0.1]),
-        Color::repeat(0.9)
+        Color::repeat(0.9),
     ));
     let material1 = Dielectric::new(1.5);
     let material2 = Lambertian::from_color(Color::from([0.4, 0.2, 0.1]));
@@ -85,7 +85,7 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
 pub fn select_scene(name: &str) -> SharedHittable {
     match name {
         "random" => create_random_scene(),
-        "2sp" | _ => two_spheres()
+        "2sp" | _ => two_spheres(),
     }
 }
 
@@ -93,7 +93,7 @@ fn two_spheres() -> SharedHittable {
     let checker = CheckerTexture::new(Color::from([0.2, 0.3, 0.1]), Color::repeat(0.9));
     let mat = Lambertian::new(checker);
     HittableList::new(vec![
-      Sphere::new([0., -10., 0.], 10., mat.clone()),
-      Sphere::new([0., 10., 0.], 10., mat)
+        Sphere::new([0., -10., 0.], 10., mat.clone()),
+        Sphere::new([0., 10., 0.], 10., mat),
     ])
 }

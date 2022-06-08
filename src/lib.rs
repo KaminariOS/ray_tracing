@@ -20,18 +20,18 @@ use wasm_bindgen::prelude::*;
 
 use crate::ray::{Hittable, Ray};
 
+mod aabb;
 mod camera;
+#[cfg(feature = "cli")]
+pub mod cli;
 mod geo;
 mod material;
 mod rand_gen;
 mod ray;
 mod renderer;
-mod types;
-mod aabb;
-mod texture;
 mod scene;
-#[cfg(feature = "cli")]
-pub mod cli;
+mod texture;
+mod types;
 
 extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
@@ -177,4 +177,3 @@ pub async fn run() {
         }
     });
 }
-
