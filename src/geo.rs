@@ -5,6 +5,9 @@ use crate::types::{create_shared_mut, Color, SharedHittable, SharedMaterial, Sha
 use crate::Ray;
 use na::{Point3, Vector3};
 use crate::aabb::{AxisAlignedBoundingBox};
+use crate::texture::CheckerTexture;
+
+const PI: f32 = std::f32::consts::PI;
 
 pub struct Sphere {
     pub center0: Point3<f32>,
@@ -55,6 +58,12 @@ impl Sphere {
             self.center0
         }
     }
+
+    fn get_sphere_uv(p: Point3<f32>) -> (f32, f32) {
+        let theta = (-p.y).acos();
+        let phi = (-p.z).atan2(p.x) + PI;
+        (phi / (2. * PI), theta / PI)
+    }
 }
 
 impl Hittable for Sphere {
@@ -79,6 +88,7 @@ impl Hittable for Sphere {
         hit_record.t = root;
         hit_record.point = ray.at(root);
         let outward_normal = (hit_record.point - self.get_center(ray.time)) / self.radius;
+        hit_record.uv = Self::get_sphere_uv(outward_normal.into());
         hit_record.set_face_normal(ray, outward_normal);
         hit_record.material = self.material.clone();
         Some(hit_record)
@@ -103,8 +113,11 @@ impl Hittable for Sphere {
 
 #[allow(dead_code)]
 pub fn create_objs() -> HittableList {
-    let material_ground = Lambertian::new(Color::from([0.8, 0.8, 0.]));
-    let material_center = Lambertian::new(Color::from([0.1, 0.2, 0.5]));
+    let material_ground = Lambertian::new(CheckerTexture::new(
+        Color::from([0.2, 0.3, 0.1]),
+        Color::from([0.9, 0.9, 0.9])
+    ));
+    let material_center = Lambertian::from_color(Color::from([0.1, 0.2, 0.5]));
     // let material_center = Dielectric::new(1.5);
     // let material_left = Metal::new(Color::from([0.8, 0.8, 0.8]), 0.3);
     let material_left = Dielectric::new(1.5);
@@ -121,16 +134,19 @@ pub fn create_objs() -> HittableList {
 }
 
 pub fn create_random_scene() -> SharedHittable {
-    let num = 44;
+    let num = 11;
     let mut objects: Vec<_> = (-num..num)
         .map(|a| (-num..num).filter_map(move |b| create_random_sphere(a, b)))
         .flatten()
         .map(|x| x as SharedHittable)
         .collect();
 
-    let material_ground = Lambertian::new(Color::from([0.5, 0.5, 0.5]));
+    let material_ground = Lambertian::new(CheckerTexture::new(
+        Color::from([0.2, 0.3, 0.1]),
+        Color::from([0.9, 0.9, 0.9])
+    ));
     let material1 = Dielectric::new(1.5);
-    let material2 = Lambertian::new(Color::from([0.4, 0.2, 0.1]));
+    let material2 = Lambertian::from_color(Color::from([0.4, 0.2, 0.1]));
     let material3 = Metal::new(Color::from([0.7, 0.6, 0.5]), 0.);
     let vec: Vec<SharedHittable> = vec![
         Sphere::new([0., -1000., 0.], 1000., material_ground),
@@ -152,7 +168,7 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
         let material: SharedMaterial = if mat < 0.8 {
             let albedo = get_rand_vec3_range(0., 1.).component_mul(&get_rand_vec3_range(0., 1.));
             moving = true;
-            Lambertian::new(albedo)
+            Lambertian::from_color(albedo)
         } else if mat < 0.95 {
             let albedo = get_rand_vec3_range(0.5, 1.);
             let fuzz = get_rand_range(0., 0.5);
