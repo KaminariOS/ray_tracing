@@ -7,7 +7,7 @@ use crate::types::{Color, Shared, SharedHittable, SharedMaterial, SharedSphere};
 use na::{Point3, Vector3};
 
 #[allow(dead_code)]
-fn create_objs() -> HittableList {
+fn create_objs() -> Shared<HittableList> {
     let material_ground = Lambertian::new(CheckerTexture::new(
         Color::from([0.2, 0.3, 0.1]),
         Color::from([0.9, 0.9, 0.9]),
@@ -17,18 +17,17 @@ fn create_objs() -> HittableList {
     // let material_left = Metal::new(Color::from([0.8, 0.8, 0.8]), 0.3);
     let material_left = Dielectric::new(1.5);
     let material_right = Metal::new(Color::from([0.8, 0.6, 0.2]), 0.);
-    HittableList {
-        objects: vec![
+    HittableList::new(
+         vec![
             Sphere::new([0., 0., -1.], 0.5, material_center),
             Sphere::new([0., -100.5, -1.], 100., material_ground),
             Sphere::new([-1., 0., -1.], 0.5, material_left.clone()),
             Sphere::new([-1., 0., -1.], -0.45, material_left),
             Sphere::new([1., 0., -1.], 0.5, material_right),
-        ],
-    }
+        ],  None)
 }
 
-fn create_random_scene() -> SharedHittable {
+fn create_random_scene(name: &str) -> SharedHittable {
     let num = 11;
     let mut objects: Vec<_> = (-num..num)
         .map(|a| (-num..num).filter_map(move |b| create_random_sphere(a, b)))
@@ -50,7 +49,8 @@ fn create_random_scene() -> SharedHittable {
         Sphere::new([4., 1., 0.], 1., material3),
     ];
     objects.extend(vec);
-    HittableList::new_bvh(objects, 0., 1.)
+    HittableList::new_bvh(objects, 0., 1.,
+                          Some(name.into()))
 }
 
 fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
@@ -82,36 +82,38 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
     }
 }
 
-pub fn select_scene(name: &str) -> SharedHittable {
+pub fn select_scene(name: &str) ->  SharedHittable {
+    log::info!("Building scene: {}", name);
     match name {
-        "random" => create_random_scene(),
-        "2psp" => two_perlin_spheres(),
-        "earth" => earth(),
-        "2sp" | _ => two_spheres(),
+        "random" => create_random_scene(name),
+        "2psp" => two_perlin_spheres(name),
+        "earth" => earth(name),
+        "2sp" | _ => two_spheres(name),
     }
 }
 
-fn two_spheres() -> Shared<HittableList>  {
+fn two_spheres(name: &str) -> Shared<HittableList>  {
     let checker = CheckerTexture::new(Color::from([0.2, 0.3, 0.1]), Color::repeat(0.9));
     let mat = Lambertian::new(checker);
     HittableList::new(vec![
         Sphere::new([0., -10., 0.], 10., mat.clone()),
         Sphere::new([0., 10., 0.], 10., mat),
-    ])
+    ], Some(name.into()))
 }
 
-fn two_perlin_spheres() -> Shared<HittableList> {
+fn two_perlin_spheres(name: &str) -> Shared<HittableList> {
     let pertex = NoiseTexture::new(4.);
     HittableList::new(
         vec![
             Sphere::new([0., -1000., 0.], 1000., Lambertian::new(pertex.clone())),
             Sphere::new([0., 2., 0.], 2., Lambertian::new(pertex))
-        ]
+        ],
+        Some(name.into())
     )
 }
 
-fn earth() -> SharedSphere {
+fn earth(name: &str) -> SharedSphere {
    let earth_texture = ImageTexture::new("earthmap.jpg");
     let earth_surface = Lambertian::new(earth_texture);
-    Sphere::new([0.; 3], 2., earth_surface)
+    Sphere::new_with_label([0.; 3], 2., earth_surface, Some(name.into()))
 }

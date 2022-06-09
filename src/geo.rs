@@ -14,10 +14,15 @@ pub struct Sphere {
     time0: f32,
     time1: f32,
     moving: bool,
+    label: Option<String>
 }
 
 impl Sphere {
     pub fn new(center: [f32; 3], radius: f32, material: SharedMaterial) -> SharedSphere {
+        Self::new_with_label(center, radius, material, None)
+    }
+    pub fn new_with_label(center: [f32; 3], radius: f32, material: SharedMaterial, label: Option<String>) -> SharedSphere {
+
         create_shared_mut(Sphere {
             center0: Point3::from(center),
             center1: Point3::from(center),
@@ -26,6 +31,7 @@ impl Sphere {
             radius,
             material,
             moving: false,
+            label
         })
     }
     pub fn new_moving(
@@ -45,6 +51,7 @@ impl Sphere {
             radius,
             material,
             moving: true,
+            label: None
         })
     }
     fn get_center(&self, time: f32) -> Point3<f32> {
@@ -105,5 +112,9 @@ impl Hittable for Sphere {
                 self.center0 + offset,
             ))
         }
+    }
+
+    fn get_label(&self) -> Option<&String> {
+        self.label.as_ref()
     }
 }

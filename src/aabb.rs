@@ -64,10 +64,11 @@ pub struct BVHNode {
     left: SharedHittable,
     right: SharedHittable,
     bbox: AxisAlignedBoundingBox,
+    label: Option<String>
 }
 
 impl BVHNode {
-    pub fn new(objects: &[SharedHittable], time0: f32, time1: f32) -> Shared<Self> {
+    pub fn new(objects: &[SharedHittable], time0: f32, time1: f32, label: Option<String>) -> Shared<Self> {
         let mut objects: Vec<_> = objects.iter().map(|x| x.clone()).collect();
         let axis = get_rand_int_range(0, 3) as usize;
         let obj_span = objects.len();
@@ -87,15 +88,15 @@ impl BVHNode {
             });
             let mid = obj_span / 2;
             (
-                Self::new(&objects[0..mid], time0, time1) as SharedHittable,
-                Self::new(&objects[mid..obj_span], time0, time1) as SharedHittable,
+                Self::new(&objects[0..mid], time0, time1, None) as SharedHittable,
+                Self::new(&objects[mid..obj_span], time0, time1, None) as SharedHittable,
             )
         };
         let left_box = left.read().unwrap().bounding_box(time0, time1);
         let right_box = right.read().unwrap().bounding_box(time0, time1);
         let bbox =
             AxisAlignedBoundingBox::surrounding_box(left_box, right_box).expect("No bounding_box");
-        create_shared_mut(Self { left, right, bbox })
+        create_shared_mut(Self { left, right, bbox, label })
     }
 
     fn box_compare(a: &SharedHittable, axis: usize) -> f32 {
@@ -126,5 +127,9 @@ impl Hittable for BVHNode {
 
     fn bounding_box(&self, _time0: f32, _time1: f32) -> Option<AxisAlignedBoundingBox> {
         Some(self.bbox)
+    }
+
+    fn get_label(&self) -> Option<&String> {
+        self.label.as_ref()
     }
 }

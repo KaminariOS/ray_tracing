@@ -4,6 +4,7 @@ use egui::{ClippedPrimitive, Context, TexturesDelta};
 use image::ColorType;
 use pixels::{Pixels, PixelsContext};
 use winit::window::Window;
+use strum::{EnumIter, IntoEnumIterator};
 
 /// Manages all state required for rendering egui over `Pixels`.
 pub(crate) struct Framework {
@@ -18,6 +19,25 @@ pub(crate) struct Framework {
     pub scale_factor: f32,
 }
 
+#[derive(PartialEq, EnumIter, Clone, Copy)]
+pub enum Scene {
+    RANDOM,
+    TwoPsp,
+    EARTH,
+    TwoSp
+}
+
+impl Scene {
+
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::RANDOM => "random",
+            Self::EARTH => "earth",
+            Self::TwoPsp => "2psp",
+            Self::TwoSp => "2sp"
+        }
+    }
+}
 /// Example application state. A real application will need a lot more state than this.
 impl Framework {
     /// Create egui.
@@ -117,6 +137,7 @@ pub struct Gui {
     pub sample_count: usize,
     pub max_depth: usize,
     pre: Option<Box<Gui>>,
+    pub scene: Scene
 }
 
 impl Gui {
@@ -130,6 +151,8 @@ impl Gui {
             sample_count: 4,
             max_depth: 10,
             pre: None,
+            scene: Scene::EARTH
+
         };
         cur.pre = Some(Box::new(cur.clone()));
         cur
@@ -150,37 +173,25 @@ impl Gui {
     // }
     /// Create the UI using egui.
     fn ui(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("About...").clicked() {
-                        self.window_open = true;
-                        ui.close_menu();
-                    }
-                })
-            });
-        });
-
-        egui::Window::new("Hello, egui!")
-            .open(&mut self.window_open)
-            .show(ctx, |ui| {
-                ui.label("This example demonstrates using egui with pixels.");
-                ui.label("Made with 💖 in San Francisco!");
-
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x /= 2.0;
-                    ui.label("Learn more about egui at");
-                    ui.hyperlink("https://docs.rs/egui");
-                });
-            });
         egui::Window::new("df").show(ctx, |ui| {
-            ui.add(egui::Label::new("Hello World!"));
             ui.label("A shorter and more convenient way to add a label.");
             if ui.button("Take a screenshot").clicked() {
                 self.save_img = true;
             }
+
+            egui::ComboBox::from_label("Select one!")
+                .selected_text(format!("{:?}", self.scene.to_str()))
+                .show_ui(ui, |ui| {
+                    Scene::iter().for_each(|x| {
+                         ui.selectable_value(
+                            &mut self.scene,
+                            x,
+                            x.to_str()
+                        );
+                    }
+                    )
+                }
+                );
             ui.label("Scale");
             ui.add(egui::Slider::new(&mut self.scale, 1..=20));
             // ui.add(egui::DragValue::new(&mut self.scale));

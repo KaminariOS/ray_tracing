@@ -23,11 +23,10 @@ pub fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
                 .bytes()?
                 .to_vec();
         } else {
-            log::info!("texture file_name: {}", file_name);
             let path = std::path::Path::new(option_env!("OUT_DIR").unwrap_or("."))
                 .join(STATIC_PATH)
                 .join(file_name);
-            log::info!("Path: {:?}", path);
+            log::info!("Texture path: {:?}", path);
             let data = std::fs::read(path)?;
         }
     }

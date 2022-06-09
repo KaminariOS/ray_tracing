@@ -31,6 +31,7 @@ impl Default for Ray {
 pub trait Hittable: Send + Sync {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox>;
+    fn get_label(&self) -> Option<&String>;
 }
 
 pub struct HitRecord {
@@ -69,6 +70,7 @@ impl HitRecord {
 
 pub struct HittableList {
     pub objects: Vec<SharedHittable>,
+    label: Option<String>
 }
 
 impl HittableList {
@@ -81,27 +83,27 @@ impl HittableList {
         self.objects.push(object)
     }
 
-    pub fn new(objects: Vec<SharedHittable>) -> Shared<Self> {
-        create_shared_mut(Self { objects })
+    pub fn new(objects: Vec<SharedHittable>, label: Option<String>) -> Shared<Self> {
+        create_shared_mut(Self { objects, label})
     }
 
-    pub fn new_bvh(objects: Vec<SharedHittable>, time0: f32, time1: f32) -> SharedHittable {
+    pub fn new_bvh(objects: Vec<SharedHittable>, time0: f32, time1: f32, label: Option<String>) -> SharedHittable {
         if option_env!("BVH")
             .unwrap_or("true")
             .parse::<bool>()
             .unwrap()
         {
             log::info!("Building BVH for {} objects", objects.len());
-            BVHNode::new(&objects, time0, time1)
+            BVHNode::new(&objects, time0, time1, label)
         } else {
-            Self::new(objects)
+            Self::new(objects, label)
         }
     }
 }
 
 impl Default for HittableList {
     fn default() -> Self {
-        Self { objects: vec![] }
+        Self { objects: vec![], label: None }
     }
 }
 
@@ -123,5 +125,9 @@ impl Hittable for HittableList {
             let bbox = cur.read().unwrap().bounding_box(time0, time1);
             AxisAlignedBoundingBox::surrounding_box(acc, bbox)
         })
+    }
+
+    fn get_label(&self) -> Option<&String> {
+        self.label.as_ref()
     }
 }

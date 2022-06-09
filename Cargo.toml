@@ -36,6 +36,7 @@ float_eq = "1.0.0"
 itertools = "0.10.3"
 clap = {version = "3.1.18", optional = true, features = ["derive"]}
 anyhow = "1.0.57"
+strum = {version = "0.24.0", features = ["derive"]}
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

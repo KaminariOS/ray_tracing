@@ -11,6 +11,7 @@ use crate::gui::Gui;
     }
 }
 use crate::rand_gen::get_rand;
+use crate::scene::select_scene;
 
 #[allow(dead_code)]
 #[derive(Derivative)]
@@ -32,7 +33,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(width: u32, height: u32, world: SharedHittable) -> Renderer {
+    pub fn new(width: u32, height: u32, world: SharedHittable) -> Self {
         let aspect_ratio = width as f32 / height as f32;
         let aperture = 0.1;
         let dist_to_focus = 10.;
@@ -71,13 +72,13 @@ impl Renderer {
 
         assert_eq!(pixel_count as u32, self.width * self.height);
 
-        let line_len = 4 * self.width as usize;
+        let row_len = 4 * self.width as usize;
         cfg_if! {
             if #[cfg(feature = "rayon")] {
                 use rayon::prelude::*;
-                let iter = frame.par_chunks_exact_mut(line_len);
+                let iter = frame.par_chunks_exact_mut(row_len);
             } else {
-                let iter = frame.chunks_exact_mut(line_len);
+                let iter = frame.chunks_exact_mut(row_len);
             }
         }
 
@@ -95,13 +96,13 @@ impl Renderer {
                 pb.set_style(
                     ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] {wide_bar} {pos}/{len} rows")
                 );
+                pb.set_draw_delta(if self.height > 500 {10} else {1});
                 let iter = iter.progress_with(pb);
-                // pb.set_draw_delta(10 as u64);
             }
         }
 
-        iter.rev().enumerate().for_each(|(y, line)| {
-            line.chunks_exact_mut(4).enumerate().for_each(|(x, pixel)|
+        iter.rev().enumerate().for_each(|(y, row)| {
+            row.chunks_exact_mut(4).enumerate().for_each(|(x, pixel)|
                 {
                     let rgba_float = (0..self.multisample)
                         .map(|_| {
@@ -190,6 +191,10 @@ impl Renderer {
         self.update_scale(gui.scale, pixels);
         self.multisample = gui.sample_count;
         self.max_depth = gui.max_depth;
+        let scene = gui.scene.to_str();
+        if self.world.read().unwrap().get_label().filter(|&label| label == scene).is_none() {
+            self.world = select_scene(scene);
+        }
     }
 }
 
