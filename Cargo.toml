@@ -22,7 +22,7 @@ cfg-if = "1.0.0"
 log = "0.4.17"
 nalgebra = "0.31"
 
-image = "0.24.2"
+image = { version = "0.24.2", default-features = false,  features = ["png", "jpeg"]}
 instant = "0.1.12"
 
 egui = "0.18"
@@ -35,6 +35,7 @@ derivative = "2.2.0"
 float_eq = "1.0.0"
 itertools = "0.10.3"
 clap = {version = "3.1.18", optional = true, features = ["derive"]}
+anyhow = "1.0.57"
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -52,12 +53,13 @@ wgpu = { version = "0.12", features = ["webgl"]}
 console_log = "0.2"
 getrandom = { version = "0.2.6", features = ["js"] }
 instant = { version = "0.1.12", features = ["stdweb", "wasm-bindgen"] }
+reqwest = "0.11.10"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.9"
 rayon = {version = "1.5.3", optional = true}
 getrandom = "0.2.6"
-indicatif = {version = "0.16.2", optional = true}
+indicatif = {version = "0.16.2", optional = true, features = ["rayon"]}
 wgpu = { version = "0.12", optional = true}
 pollster = { version = "0.2.5", optional = true}
 

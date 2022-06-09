@@ -68,52 +68,59 @@ impl Renderer {
         log::info!("{:?}", self);
         let now = instant::Instant::now();
         let pixel_count = frame.len() / 4;
-        cfg_if! {
-            if #[cfg(feature = "progress")] {
-                use indicatif::{ProgressBar, ProgressStyle};
-                let work_div = pixel_count / 100;
-                let pb = ProgressBar::new( (pixel_count / work_div) as u64);
-                pb.set_style(
-                    ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] {wide_bar} {pos}/{len}")
-                );
-            }
-        }
+
         assert_eq!(pixel_count as u32, self.width * self.height);
+
+        let line_len = 4 * self.width as usize;
         cfg_if! {
             if #[cfg(feature = "rayon")] {
                 use rayon::prelude::*;
-                let iter = frame.par_chunks_exact_mut(4);
+                let iter = frame.par_chunks_exact_mut(line_len);
             } else {
-                let iter = frame.chunks_exact_mut(4);
+                let iter = frame.chunks_exact_mut(line_len);
             }
         }
 
-        iter.enumerate().for_each(|(i, pixel)| {
-            #[cfg(feature = "progress")]
-            if i % work_div == 0 {
-                pb.inc(1);
+        cfg_if! {
+            if #[cfg(feature = "progress")] {
+                use indicatif::{ProgressBar, ProgressStyle};
+                cfg_if! {
+                    if #[cfg(feature = "rayon")] {
+                        use indicatif::ParallelProgressIterator;
+                    } else {
+                        use indicatif::ProgressIterator;
+                    }
+                }
+                let pb = ProgressBar::new(self.height as u64);
+                pb.set_style(
+                    ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] {wide_bar} {pos}/{len} rows")
+                );
+                let iter = iter.progress_with(pb);
+                // pb.set_draw_delta(10 as u64);
             }
-            let (x, y) = self.cal_coords(i);
-            // let rgba_float = self.draw_gradient(u, v);
-            // let rgba_float = self.draw_checkerboard(u, v);
-            let rgba_float = (0..self.multisample)
-                .map(|_| {
-                    let (u, v) = self.cal_norm_coords(x, y);
-                    let ray = self.camera.get_ray(u, v);
-                    ray_color(&ray, &self.world, self.max_depth)
-                })
-                .fold(Vector3::zeros(), |acc, next| acc + next)
-                / self.multisample as f32;
-            let mut rgb = rgba_float
-                .into_iter()
-                .map(Self::float_to_rgb)
-                .collect::<Vec<_>>();
-            rgb.push(0xff);
-            pixel.copy_from_slice(&rgb);
+        }
+
+        iter.rev().enumerate().for_each(|(y, line)| {
+            line.chunks_exact_mut(4).enumerate().for_each(|(x, pixel)|
+                {
+                    let rgba_float = (0..self.multisample)
+                        .map(|_| {
+                            let (u, v) = self.cal_norm_coords(x as u32, y as u32);
+                            let ray = self.camera.get_ray(u, v);
+                            ray_color(&ray, &self.world, self.max_depth)
+                        })
+                        .fold(Vector3::zeros(), |acc, next| acc + next)
+                        / self.multisample as f32;
+                    let mut rgb = rgba_float
+                        .into_iter()
+                        .map(Self::float_to_rgb)
+                        .collect::<Vec<_>>();
+                    rgb.push(0xff);
+                    pixel.copy_from_slice(&rgb);
+                }
+            )
         });
 
-        #[cfg(feature = "progress")]
-        pb.finish_with_message("Done");
         let seconds = now.elapsed().as_secs();
         log::info!("Time: {}min {}s", seconds / 60, seconds % 60);
     }
@@ -163,12 +170,6 @@ impl Renderer {
             self.scale = scale;
             self.resize(self.actual_width, self.actual_height, pixels);
         }
-    }
-
-    #[inline]
-    fn cal_coords(&self, i: usize) -> (u32, u32) {
-        let i = i as u32;
-        (i % self.width, self.height - 1 - i / self.width)
     }
 
     #[inline]
