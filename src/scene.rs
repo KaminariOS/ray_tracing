@@ -82,7 +82,7 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
     }
 }
 
-pub fn select_scene(name: &str) ->  SharedHittable {
+pub fn select_scene(name: &str) -> SharedHittable {
     log::info!("Building scene: {}", name);
     match name {
         "random" => create_random_scene(name),

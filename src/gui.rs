@@ -179,7 +179,7 @@ impl Gui {
                 self.save_img = true;
             }
 
-            egui::ComboBox::from_label("Select one!")
+            egui::ComboBox::from_label("Select one scene")
                 .selected_text(format!("{:?}", self.scene.to_str()))
                 .show_ui(ui, |ui| {
                     Scene::iter().for_each(|x| {
@@ -192,14 +192,10 @@ impl Gui {
                     )
                 }
                 );
-            ui.label("Scale");
-            ui.add(egui::Slider::new(&mut self.scale, 1..=20));
+            ui.add(egui::Slider::new(&mut self.scale, 1..=20).text("Scale"));
             // ui.add(egui::DragValue::new(&mut self.scale));
-            ui.label("SampleCount");
-            ui.add(egui::Slider::new(&mut self.sample_count, 1..=50));
-            ui.label("Max depth");
-            ui.add(egui::Slider::new(&mut self.max_depth, 1..=50));
-            ui.checkbox(&mut self.my_boolean, "Checkbox");
+            ui.add(egui::Slider::new(&mut self.sample_count, 1..=50).text("SampleCount"));
+            ui.add(egui::Slider::new(&mut self.max_depth, 1..=50).text("Max depth"));
         });
     }
 }

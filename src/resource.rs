@@ -18,10 +18,11 @@ pub fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
     cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             let url = format_url(file_name);
-            log::info!("URL: {:?}", path);
-            let data = reqwest::get(url)?
-                .bytes()?
-                .to_vec();
+            log::info!("URL: {:?}", url);
+            // let data = reqwest::get(url)?
+            //     .bytes()?
+            //     .to_vec();
+            let data = include_bytes!("../static/earthmap.jpg").to_vec();
         } else {
             let path = std::path::Path::new(option_env!("OUT_DIR").unwrap_or("."))
                 .join(STATIC_PATH)
