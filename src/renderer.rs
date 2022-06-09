@@ -62,7 +62,7 @@ impl Renderer {
 
     pub fn draw(&mut self, frame: &mut [u8]) {
         if !self.dirty {
-            return;
+            return
         }
         self.dirty = false;
         log::info!("{:?}", self);
@@ -105,7 +105,7 @@ impl Renderer {
                 {
                     let rgba_float = (0..self.multisample)
                         .map(|_| {
-                            let (u, v) = self.cal_norm_coords(x as u32, y as u32);
+                            let [u, v] = self.cal_norm_coords(x as u32, y as u32);
                             let ray = self.camera.get_ray(u, v);
                             ray_color(&ray, &self.world, self.max_depth)
                         })
@@ -173,16 +173,16 @@ impl Renderer {
     }
 
     #[inline]
-    fn cal_norm_coords(&self, x: u32, y: u32) -> (f32, f32) {
+    fn cal_norm_coords(&self, x: u32, y: u32) -> [f32; 2] {
         let (x_offset, y_offset) = if self.multisample != 1 {
             (get_rand() - 0.5, get_rand() - 0.5)
         } else {
             (0., 0.)
         };
-        (
+        [
             (x as f32 + x_offset) / (self.width - 1) as f32,
             (y as f32 + y_offset) / (self.height - 1) as f32,
-        )
+        ]
     }
 
     #[cfg(feature = "window")]

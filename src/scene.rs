@@ -2,8 +2,8 @@ use crate::geo::Sphere;
 use crate::material::{Dielectric, Lambertian, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
 use crate::ray::HittableList;
-use crate::texture::{CheckerTexture, NoiseTexture};
-use crate::types::{Color, SharedHittable, SharedMaterial, SharedSphere};
+use crate::texture::{CheckerTexture, ImageTexture, NoiseTexture};
+use crate::types::{Color, Shared, SharedHittable, SharedMaterial, SharedSphere};
 use na::{Point3, Vector3};
 
 #[allow(dead_code)]
@@ -86,11 +86,12 @@ pub fn select_scene(name: &str) -> SharedHittable {
     match name {
         "random" => create_random_scene(),
         "2psp" => two_perlin_spheres(),
+        "earth" => earth(),
         "2sp" | _ => two_spheres(),
     }
 }
 
-fn two_spheres() -> SharedHittable {
+fn two_spheres() -> Shared<HittableList>  {
     let checker = CheckerTexture::new(Color::from([0.2, 0.3, 0.1]), Color::repeat(0.9));
     let mat = Lambertian::new(checker);
     HittableList::new(vec![
@@ -99,7 +100,7 @@ fn two_spheres() -> SharedHittable {
     ])
 }
 
-fn two_perlin_spheres() -> SharedHittable {
+fn two_perlin_spheres() -> Shared<HittableList> {
     let pertex = NoiseTexture::new(4.);
     HittableList::new(
         vec![
@@ -107,4 +108,10 @@ fn two_perlin_spheres() -> SharedHittable {
             Sphere::new([0., 2., 0.], 2., Lambertian::new(pertex))
         ]
     )
+}
+
+fn earth() -> SharedSphere {
+   let earth_texture = ImageTexture::new("earthmap.jpg");
+    let earth_surface = Lambertian::new(earth_texture);
+    Sphere::new([0.; 3], 2., earth_surface)
 }

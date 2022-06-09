@@ -14,20 +14,20 @@ fn format_url(file_name: &str) -> reqwest::Url {
     base.join(file_name).unwrap()
 }
 
-pub async fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
+pub fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
     cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             let url = format_url(file_name);
-            let data = reqwest::get(url)
-                .await?
-                .bytes()
-                .await?
+            log::info!("URL: {:?}", path);
+            let data = reqwest::get(url)?
+                .bytes()?
                 .to_vec();
         } else {
-            println!("texture file_name: {}", file_name);
+            log::info!("texture file_name: {}", file_name);
             let path = std::path::Path::new(option_env!("OUT_DIR").unwrap_or("."))
                 .join(STATIC_PATH)
                 .join(file_name);
+            log::info!("Path: {:?}", path);
             let data = std::fs::read(path)?;
         }
     }

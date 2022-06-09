@@ -56,10 +56,10 @@ impl Sphere {
         }
     }
 
-    fn get_sphere_uv(p: Point3<f32>) -> (f32, f32) {
+    fn get_sphere_uv(p: Point3<f32>) -> [f32; 2] {
         let theta = (-p.y).acos();
         let phi = (-p.z).atan2(p.x) + PI;
-        (phi / (2. * PI), theta / PI)
+        [phi / (2. * PI), theta / PI]
     }
 }
 

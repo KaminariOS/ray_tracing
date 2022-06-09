@@ -37,7 +37,7 @@ pub struct HitRecord {
     pub(crate) point: Point3<f32>,
     pub(crate) normal: Vector3<f32>,
     pub(crate) t: f32,
-    pub uv: (f32, f32),
+    pub uv: [f32; 2],
     pub front_face: bool,
     pub material: SharedMaterial,
 }
@@ -48,7 +48,7 @@ impl Default for HitRecord {
             point: Point3::origin(),
             normal: Vector3::zeros(),
             t: f32::MAX,
-            uv: (0., 0.),
+            uv: [0.; 2],
             front_face: false,
             material: Lambertian::from_color(Color::from([0.8, 0.8, 0.])),
         }
