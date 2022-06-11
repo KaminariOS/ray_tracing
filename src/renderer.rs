@@ -3,7 +3,7 @@ use crate::types::{Color, SharedHittable};
 use crate::Ray;
 use cfg_if::cfg_if;
 use derivative::Derivative;
-use na::{Point3, Vector3, Vector4};
+use na::{Vector3, Vector4};
 cfg_if! {
     if #[cfg(feature = "window")] {
 use pixels::Pixels;
@@ -11,6 +11,7 @@ use crate::gui::Gui;
     }
 }
 use crate::rand_gen::get_rand;
+#[cfg(feature = "window")]
 use crate::scene::select_scene;
 
 #[allow(dead_code)]
@@ -30,34 +31,23 @@ pub struct Renderer {
     pub(crate) max_depth: usize,
     #[derivative(Debug = "ignore")]
     pub dirty: bool,
+    background: Color
 }
 
 impl Renderer {
-    pub fn new(width: u32, height: u32, world: SharedHittable) -> Self {
-        let aspect_ratio = width as f32 / height as f32;
-        let aperture = 0.1;
-        let dist_to_focus = 10.;
+    pub fn new(width: u32, height: u32, (world, background): (SharedHittable, Color), camera: Camera) -> Self {
         Self {
             width,
             height,
             actual_width: width,
             scale: 1,
-            camera: Camera::new(
-                Point3::from([13., 2., 3.]),
-                Vector3::from([-13., -2., -3.]),
-                Vector3::y(),
-                20.,
-                aspect_ratio,
-                aperture,
-                dist_to_focus,
-                0.,
-                1.,
-            ),
+            camera,
             actual_height: height,
             world,
             multisample: 4,
             max_depth: 10,
             dirty: true,
+            background
         }
     }
 
@@ -76,6 +66,7 @@ impl Renderer {
         cfg_if! {
             if #[cfg(feature = "rayon")] {
                 use rayon::prelude::*;
+                log::info!("Rayon enabled.");
                 let iter = frame.par_chunks_exact_mut(row_len);
             } else {
                 let iter = frame.chunks_exact_mut(row_len);
@@ -94,7 +85,7 @@ impl Renderer {
                 }
                 let pb = ProgressBar::new(self.height as u64);
                 pb.set_style(
-                    ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] {wide_bar} {pos}/{len} rows")
+                    ProgressStyle::default_bar().template("{spinner:.green} [{elapsed_precise}] {wide_bar} {per_sec} {pos}/{len} rows eta: {eta}")
                 );
                 pb.set_draw_delta(if self.height > 500 {10} else {1});
                 let iter = iter.progress_with(pb);
@@ -108,7 +99,7 @@ impl Renderer {
                         .map(|_| {
                             let [u, v] = self.cal_norm_coords(x as u32, y as u32);
                             let ray = self.camera.get_ray(u, v);
-                            ray_color(&ray, &self.world, self.max_depth)
+                            self.ray_color(&ray, self.max_depth)
                         })
                         .fold(Vector3::zeros(), |acc, next| acc + next)
                         / self.multisample as f32;
@@ -162,7 +153,8 @@ impl Renderer {
         self.width = width / self.scale;
         self.height = height / self.scale;
         pixels.resize_buffer(self.width, self.height);
-        self.camera.resize(self.width, self.height);
+        self.camera.aspect_ratio = self.width as f32 / self.height as f32;
+        self.camera.rebuild();
     }
 
     #[cfg(feature = "window")]
@@ -193,24 +185,27 @@ impl Renderer {
         self.max_depth = gui.max_depth;
         let scene = gui.scene.to_str();
         if self.world.read().unwrap().get_label().filter(|&label| label == scene).is_none() {
-            self.world = select_scene(scene);
+            let (world, background) = select_scene(scene);
+            self.world = world;
+            self.background = background;
         }
     }
-}
+    fn ray_color(&self, r: &Ray, depth: usize) -> Color {
+        if depth == 0 {
+            return Color::zeros();
+        }
+        if let Some(hit_record) = self.world.read().unwrap().hit(r, 0.001, f32::INFINITY) {
+            // let target = hit_record.normal + rand_vec3_on_unit_sphere();
+            let emitted = hit_record.material.read().unwrap().emit(hit_record.uv, hit_record.point);
+            let scattered = if let Some((attenuation, scattered)) = hit_record.material.read().unwrap().scatter(r, &hit_record) {
+                attenuation.component_mul(&self.ray_color(&scattered, depth - 1))
+            } else {
+                Color::zeros()
+            };
+            emitted + scattered
+        } else {
+            self.background
+        }
 
-fn ray_color(r: &Ray, world: &SharedHittable, depth: usize) -> Vector3<f32> {
-    if depth == 0 {
-        return Color::zeros();
     }
-    if let Some(hit_record) = world.read().unwrap().hit(r, 0.001, f32::INFINITY) {
-        // let target = hit_record.normal + rand_vec3_on_unit_sphere();
-        if let Some((attenuation, scattered)) = hit_record.material.scatter(r, &hit_record) {
-            return attenuation.component_mul(&ray_color(&scattered, world, depth - 1));
-        }
-        return Color::zeros();
-    }
-    let unit_direction = r.direction.normalize();
-    let t = 0.5 * (unit_direction.y + 1.);
-    let color = (1. - t) * Color::from([1.; 3]) + t * Color::from([0.5, 0.7, 1.]);
-    color
 }
