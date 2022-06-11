@@ -1,6 +1,7 @@
+use std::fmt::{Debug, Formatter};
 use crate::aabb::{AxisAlignedBoundingBox, BVHNode};
 use crate::material::Lambertian;
-use crate::types::{create_shared_mut, Color, Shared, SharedHittable, SharedMaterial};
+use crate::types::{create_shared_mut, Shared, SharedHittable, SharedMaterial};
 use na::{Point3, Vector3};
 
 pub struct Ray {
@@ -14,7 +15,7 @@ impl Ray {
         self.origin + t * self.direction
     }
     pub fn new(origin: Point3<f32>, direction: Vector3<f32>, time: f32) -> Self {
-        assert_ne!(direction.norm_squared(), 0.);
+        // assert_ne!(direction.norm_squared(), 0.);
         Self {
             origin,
             direction: direction.normalize(),
@@ -31,8 +32,11 @@ impl Default for Ray {
 pub trait Hittable: Send + Sync {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox>;
-    fn get_label(&self) -> Option<&String>;
+    fn get_label(&self) -> Option<&String> {
+        None
+    }
 }
+
 
 pub struct HitRecord {
     pub(crate) point: Point3<f32>,
@@ -47,11 +51,11 @@ impl Default for HitRecord {
     fn default() -> Self {
         Self {
             point: Point3::origin(),
-            normal: Vector3::zeros(),
+            normal: Vector3::y(),
             t: f32::MAX,
             uv: [0.; 2],
             front_face: false,
-            material: Lambertian::from_color(Color::from([0.8, 0.8, 0.])),
+            material: Lambertian::from_color([0.8, 0.8, 0.]),
         }
     }
 }

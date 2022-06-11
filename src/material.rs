@@ -1,13 +1,15 @@
 use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere};
 use crate::ray::HitRecord;
 use crate::texture::SolidColor;
-use crate::types::{Color, SharedTexture};
+use crate::types::{Color, create_shared_mut, RGB, Shared, SharedTexture};
 use crate::Ray;
-use na::Vector3;
-use std::sync::Arc;
+use na::{Point3, Vector3};
 
 pub trait Material: Sync + Send {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)>;
+    fn emit(&self, _uv: [f32; 2], _point: Point3<f32>) -> Color {
+        Color::zeros()
+    }
 }
 
 pub struct Lambertian {
@@ -15,10 +17,10 @@ pub struct Lambertian {
 }
 
 impl Lambertian {
-    pub fn new(albedo: SharedTexture) -> Arc<Self> {
-        Arc::new(Lambertian { albedo })
+    pub fn new(albedo: SharedTexture) -> Shared<Self> {
+        create_shared_mut(Lambertian { albedo })
     }
-    pub fn from_color(color: Color) -> Arc<Self> {
+    pub fn from_color(color: RGB) -> Shared<Self> {
         Self::new(SolidColor::new(color))
     }
 }
@@ -48,9 +50,9 @@ impl Metal {
     fn reflect(v: Vector3<f32>, n: Vector3<f32>) -> Vector3<f32> {
         v - 2. * n.dot(&v) * n
     }
-    pub fn new(albedo: Color, fuzz: f32) -> Arc<Self> {
-        Arc::new(Metal {
-            albedo,
+    pub fn new(albedo: RGB, fuzz: f32) -> Shared<Self> {
+        create_shared_mut(Metal {
+            albedo: Color::from(albedo),
             fuzz: fuzz.min(1.),
         })
     }
@@ -80,9 +82,9 @@ pub struct Dielectric {
 }
 
 impl Dielectric {
-    pub fn new(index_of_refraction: f32) -> Arc<Self> {
+    pub fn new(index_of_refraction: f32) -> Shared<Self> {
         assert!(index_of_refraction > 0.);
-        Arc::new(Self {
+        create_shared_mut(Self {
             index_of_refraction,
         })
     }
@@ -120,5 +122,50 @@ impl Material for Dielectric {
             Color::repeat(1.),
             Ray::new(hit_record.point, direction, ray_in.time),
         ))
+    }
+}
+
+pub struct DiffuseLight {
+    texture: SharedTexture
+}
+
+impl DiffuseLight {
+    pub fn new(texture: SharedTexture) -> Shared<Self> {
+        create_shared_mut(Self{texture})
+    }
+    pub fn from_color(color: RGB) -> Shared<Self> {
+        Self::new(SolidColor::new(color))
+    }
+}
+
+impl Material for DiffuseLight {
+    fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<(Color, Ray)> {
+        None
+    }
+    fn emit(&self, uv: [f32; 2], point: Point3<f32>) -> Color {
+        self.texture.read().unwrap().value(uv, point)
+    }
+}
+
+pub struct Isotropic {
+    albedo: SharedTexture
+}
+
+impl Isotropic {
+    pub fn new(albedo: SharedTexture) -> Shared<Self> {
+        create_shared_mut(Self{albedo})
+    }
+
+    #[allow(dead_code)]
+    pub fn from_color(color: RGB) -> Shared<Self> {
+        Self::new(SolidColor::new(color))
+    }
+}
+
+impl Material for Isotropic {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
+        let scattered = Ray::new(hit_record.point, rand_vec3_on_unit_sphere(), ray_in.time);
+        let color = self.albedo.read().unwrap().value(hit_record.uv, hit_record.point);
+        Some((color, scattered))
     }
 }

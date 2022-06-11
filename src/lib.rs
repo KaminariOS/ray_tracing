@@ -13,6 +13,7 @@ mod gui;
 use gui::Framework;
 mod winit_egui;
 use crate::renderer::Renderer;
+use crate::camera::Camera;
     }
 }
 #[cfg(target_arch = "wasm32")]
@@ -111,7 +112,8 @@ pub async fn run() {
     let mut framework = Framework::new(&window, &pixels);
 
     use crate::scene::select_scene;
-    let mut renderer = Renderer::new(WIDTH, HEIGHT, select_scene("random"));
+    let mut renderer = Renderer::new(WIDTH, HEIGHT, select_scene("random"),
+                                     Camera::select_camera(WIDTH as f32 / HEIGHT as f32, "random"));
     renderer.update_from_gui(&framework.gui, &mut pixels);
     let mut input = WinitInputHelper::new();
     // let mut last = instant::Instant::now();

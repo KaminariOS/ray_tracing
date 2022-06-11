@@ -10,10 +10,10 @@ crate-type = ["cdylib", "rlib"]
 opt-level = 3
 
 [features]
-web = ["window"]
+web = ["window", "wgpu/webgl"]
 default = []
 progress = ["indicatif"]
-window = ["wgpu"]
+window = ["wgpu", "egui-wgpu", "egui", "egui-winit", "pixels", "winit", "winit_input_helper"]
 local = ["window", "rayon", "progress", "pollster"]
 cli = ["rayon", "progress", "clap"]
 
@@ -25,12 +25,12 @@ nalgebra = "0.31"
 image = { version = "0.24.2", default-features = false,  features = ["png", "jpeg"]}
 instant = "0.1.12"
 
-egui = "0.18"
-egui-winit = { version = "0.18", features = ["links"], default-features = false }
-pixels = "0.9.0"
-winit = "0.26.1"
-winit_input_helper = "0.12.0"
-egui-wgpu = { path = "../egui-wgpu"}
+egui = {version = "0.18", optional = true}
+egui-winit = { version = "0.18", features = ["links"], default-features = false, optional = true}
+pixels = {version = "0.9.0", optional = true}
+winit = {version = "0.26.1", optional = true}
+winit_input_helper = { version = "0.12.0", optional = true}
+egui-wgpu = { path = "../egui-wgpu", optional = true}
 derivative = "2.2.0"
 float_eq = "1.0.0"
 itertools = "0.10.3"
@@ -50,7 +50,6 @@ web-sys = { version = "0.3.57", features = [
     "Location",
 ]}
 # Should use the same version as that in pixels's dependency tree
-wgpu = { version = "0.12", features = ["webgl"]}
 console_log = "0.2"
 getrandom = { version = "0.2.6", features = ["js"] }
 instant = { version = "0.1.12", features = ["stdweb", "wasm-bindgen"] }

@@ -7,6 +7,7 @@ pub struct Camera {
     pub horizontal: Vector3<f32>,
     pub vertical: Vector3<f32>,
     pub lower_left_corner: Point3<f32>,
+    pub(crate) aspect_ratio: f32,
     vfov: f32,
     w: Vector3<f32>,
     u: Vector3<f32>,
@@ -21,7 +22,7 @@ pub struct Camera {
 use crate::rand_gen::{get_rand_range, rand_vec3_in_unit_disk};
 use std::f32::consts::PI;
 
-fn degree_to_radian(degree: f32) -> f32 {
+pub fn degree_to_radian(degree: f32) -> f32 {
     degree / 180.0 * PI
 }
 impl Camera {
@@ -63,18 +64,18 @@ impl Camera {
             focus_dist,
             time0,
             time1,
+            aspect_ratio
         }
     }
 
     #[cfg(feature = "window")]
-    pub(crate) fn resize(&mut self, width: u32, height: u32) {
-        let aspect_ratio = width as f32 / height as f32;
+    pub(crate) fn rebuild(&mut self) {
         *self = Camera::new(
             self.origin,
             -self.w,
             self.vup,
             self.vfov,
-            aspect_ratio,
+            self.aspect_ratio,
             self.len_radius * 2.,
             self.focus_dist,
             self.time0,
@@ -89,6 +90,50 @@ impl Camera {
             self.origin + offset,
             self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
             get_rand_range(self.time0, self.time1),
+        )
+    }
+
+    pub fn select_camera(aspect_ratio: f32, scene: &str) -> Self {
+        let aperture = 0.1;
+        let dist_to_focus = 10.;
+        let mut vfov = 20.;
+        let vup = Vector3::y();
+        let mut lookfrom = Point3::from([13., 1.5, 3.]) * 2.;
+        let mut lookat = Point3::from([0., 2., 0.]);
+        let mut direction = lookat - lookfrom;
+        let time0 = 0.;
+        let time1 = 1.;
+        match scene {
+            "cornell" | "smoke" => {
+                lookfrom = Point3::from([278., 278., -800.]);
+                lookat = Point3::from([278., 278., 0.]);
+                direction = lookat - lookfrom;
+                vfov = 40.0;
+            }
+            "simplelight" => {
+
+            }
+            "final" => {
+                lookfrom = Point3::from([478., 278., -600.]);
+                lookat = Point3::from([278., 278., 0.]);
+                direction = lookat - lookfrom;
+                vfov = 40.;
+            },
+            _ => {
+                lookfrom = Point3::from([13., 2., 3.]);
+                direction = Vector3::from([-13., -2., -3.]);
+            }
+        };
+        Camera::new(
+            lookfrom,
+            direction,
+            vup,
+            vfov,
+            aspect_ratio,
+            aperture,
+            dist_to_focus,
+            time0,
+            time1,
         )
     }
 }

@@ -7,7 +7,7 @@ pub fn get_rand() -> f32 {
 }
 
 pub fn get_rand_range(min: f32, max: f32) -> f32 {
-    assert!(min <= max);
+    // assert!(min <= max);
     min + (max - min) * get_rand()
 }
 pub fn get_rand_int_range(min: i32, max: i32) -> i32 {

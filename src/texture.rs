@@ -1,5 +1,5 @@
 use image::{Pixel, RgbaImage};
-use crate::types::{create_shared_mut, Color, Shared, SharedTexture};
+use crate::types::{create_shared_mut, Color, Shared, SharedTexture, RGB};
 use na::Point3;
 use crate::perlin::Perlin;
 use crate::resource;
@@ -13,8 +13,8 @@ pub struct SolidColor {
 }
 
 impl SolidColor {
-    pub fn new(color: Color) -> Shared<Self> {
-        create_shared_mut(Self { color })
+    pub fn new(color: RGB) -> Shared<Self> {
+        create_shared_mut(Self { color: Color::from(color) })
     }
 }
 
@@ -30,7 +30,7 @@ pub struct CheckerTexture {
 }
 
 impl CheckerTexture {
-    pub fn new(even: Color, odd: Color) -> Shared<Self> {
+    pub fn new(even: RGB, odd: RGB) -> Shared<Self> {
         create_shared_mut(Self {
             odd: SolidColor::new(odd),
             even: SolidColor::new(even),

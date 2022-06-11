@@ -24,7 +24,8 @@ pub enum Scene {
     RANDOM,
     TwoPsp,
     EARTH,
-    TwoSp
+    TwoSp,
+    Simplelight
 }
 
 impl Scene {
@@ -34,7 +35,8 @@ impl Scene {
             Self::RANDOM => "random",
             Self::EARTH => "earth",
             Self::TwoPsp => "2psp",
-            Self::TwoSp => "2sp"
+            Self::TwoSp => "2sp",
+            Self::Simplelight => "simplelight"
         }
     }
 }

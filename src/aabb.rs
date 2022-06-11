@@ -7,8 +7,8 @@ use na::Point3;
 
 #[derive(Clone, Copy)]
 pub struct AxisAlignedBoundingBox {
-    minimum: Point3<f32>,
-    maximum: Point3<f32>,
+    pub minimum: Point3<f32>,
+    pub maximum: Point3<f32>,
 }
 
 impl AxisAlignedBoundingBox {

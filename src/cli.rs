@@ -2,6 +2,7 @@ use crate::renderer::Renderer;
 use crate::scene::select_scene;
 use crate::{HEIGHT, WIDTH};
 use clap::Parser;
+use crate::camera::Camera;
 
 /// Get ray tracing parameters
 #[derive(Parser, Debug)]
@@ -21,7 +22,8 @@ pub fn image_mode() {
     let args = Args::parse();
     let scale = args.down_scale;
     let (width, height) = (WIDTH / scale, HEIGHT / scale);
-    let mut renderer = Renderer::new(width, height, select_scene(&args.scene));
+    let camera = Camera::select_camera(width as f32 / height as f32, &args.scene);
+    let mut renderer = Renderer::new(width, height, select_scene(&args.scene), camera);
     renderer.multisample = args.sample_count;
     renderer.max_depth = args.max_depth;
     let mut pixels = vec![0; (width * height * 4) as usize];
