@@ -1,10 +1,11 @@
-use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere};
+use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere, random_cosine_direction};
 use crate::ray::HitRecord;
 use crate::texture::SolidColor;
 use crate::types::{Color, create_shared_mut, RGB, Shared, SharedTexture};
 use crate::Ray;
 use na::{Point3, UnitVector3};
 use std::f32::consts::PI;
+use crate::onb::ONB;
 
 pub trait Material: Sync + Send {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)>;
@@ -31,12 +32,14 @@ impl Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
-        let mut scatter_dir = UnitVector3::new_normalize(hit_record.normal.into_inner() + rand_vec3_on_unit_sphere().into_inner());
+        let uvw = ONB::build_from_w(hit_record.normal);
+        let mut scatter_dir = uvw.local_dir(random_cosine_direction());
+        assert_eq!(uvw.w(), hit_record.normal);
         if near_zero(scatter_dir) {
             scatter_dir = hit_record.normal;
         }
         let scattered = Ray::new(hit_record.point, scatter_dir, ray_in.time);
-        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
+        let pdf = uvw.w().dot(&scatter_dir) / PI;
         Some((
             self.albedo
                 .read()

@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use cfg_if::cfg_if;
 use na::{UnitVector3, Vector3};
 
@@ -74,4 +75,15 @@ pub fn rand_vec3_in_unit_disk() -> Vector3<f32> {
         }
         return p;
     }
+}
+
+pub fn random_cosine_direction() -> UnitVector3<f32> {
+    let r1 = get_rand();
+    let r2 = get_rand();
+    let z = (1. - r2).sqrt();
+    let phi = 2. * PI * r1;
+    let r2_sq = r2.sqrt();
+    let x = phi.cos() * r2_sq;
+    let y = phi.sin() * r2_sq;
+    UnitVector3::new_unchecked(Vector3::from([x, y, z]))
 }

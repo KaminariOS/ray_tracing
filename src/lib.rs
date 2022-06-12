@@ -35,6 +35,7 @@ mod texture;
 mod types;
 mod perlin;
 mod resource;
+mod onb;
 
 extern crate nalgebra as na;
 const WIDTH: u32 = 1920;
