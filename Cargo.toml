@@ -9,13 +9,14 @@ crate-type = ["cdylib", "rlib"]
 [profile.dev]
 opt-level = 3
 
+
 [features]
 web = ["window", "wgpu/webgl"]
 default = []
 progress = ["indicatif"]
 window = ["wgpu", "egui-wgpu", "egui", "egui-winit", "pixels", "winit", "winit_input_helper"]
-local = ["window", "rayon", "progress", "pollster"]
-cli = ["rayon", "progress", "clap"]
+local = ["window", "rayon", "progress", "pollster", "rand"]
+cli = ["rayon", "progress", "clap", "rand"]
 
 [dependencies]
 cfg-if = "1.0.0"
@@ -38,6 +39,7 @@ clap = {version = "3.1.18", optional = true, features = ["derive"]}
 anyhow = "1.0.57"
 strum = {version = "0.24.0", features = ["derive"]}
 
+rand = { version = "0.8.5", optional=true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"

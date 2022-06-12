@@ -1,23 +1,37 @@
+use cfg_if::cfg_if;
 use na::Vector3;
 
+
+#[inline]
 pub fn get_rand() -> f32 {
-    let mut buf = [0; 4];
-    getrandom::getrandom(&mut buf).expect("Failed to generate random number");
-    unsafe { std::mem::transmute::<[u8; 4], u32>(buf) }.to_be() as f32 / (u32::MAX as f32 + 1.)
+    cfg_if!{
+        if #[cfg(feature = "web")] {
+            let mut buf = [0; 4];
+            getrandom::getrandom(&mut buf).expect("Failed to generate random number");
+            unsafe { std::mem::transmute::<[u8; 4], u32>(buf) }.to_be() as f32 / (u32::MAX as f32 + 1.)
+        } else {
+            rand::random()
+        }
+    }
 }
 
+#[inline]
 pub fn get_rand_range(min: f32, max: f32) -> f32 {
     // assert!(min <= max);
     min + (max - min) * get_rand()
 }
+
+#[inline]
 pub fn get_rand_int_range(min: i32, max: i32) -> i32 {
     get_rand_range(min as f32, max as f32) as i32
 }
 
+#[inline]
 pub fn get_rand_usize_range(min: usize, max: usize) -> usize {
     get_rand_range(min as f32, max as f32) as usize
 }
 
+#[inline]
 pub fn get_rand_vec3_range(min: f32, max: f32) -> Vector3<f32> {
     Vector3::from([
         get_rand_range(min, max),
@@ -26,6 +40,7 @@ pub fn get_rand_vec3_range(min: f32, max: f32) -> Vector3<f32> {
     ])
 }
 
+#[inline]
 pub fn rand_vec3_in_unit_sphere() -> Vector3<f32> {
     loop {
         let p = get_rand_vec3_range(-1., 1.);
@@ -35,6 +50,7 @@ pub fn rand_vec3_in_unit_sphere() -> Vector3<f32> {
     }
 }
 
+#[inline]
 pub fn rand_vec3_on_unit_sphere() -> Vector3<f32> {
     rand_vec3_in_unit_sphere().normalize()
 }
@@ -49,6 +65,7 @@ pub fn rand_vec3_in_unit_hemisphere(normal: Vector3<f32>) -> Vector3<f32> {
     }
 }
 
+#[inline]
 pub fn rand_vec3_in_unit_disk() -> Vector3<f32> {
     loop {
         let p = Vector3::from([get_rand_range(-1., 1.), get_rand_range(-1., 1.), 0.]);

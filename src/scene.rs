@@ -245,6 +245,8 @@ fn final_scene(label: &str) -> SharedHittable {
     let boxes2 = RotationY::new(boxes2, 15.);
     let boxes2 = Translation::new(boxes2, [-100., 270., 395.]);
     HittableList::new(vec![
-        boxes, xz, moving_sphere, dielectric_sphere, metal_sphere, dielectric_medium, dielectric_medium2, earth, pertext, boxes2
+        boxes, xz, moving_sphere, dielectric_sphere, metal_sphere, dielectric_medium,
+        dielectric_medium2,
+        earth, pertext, boxes2
     ], Some(label.into()))
 }

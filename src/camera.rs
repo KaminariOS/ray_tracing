@@ -94,7 +94,7 @@ impl Camera {
     }
 
     pub fn select_camera(aspect_ratio: f32, scene: &str) -> Self {
-        let aperture = 0.1;
+        let mut aperture = 0.1;
         let dist_to_focus = 10.;
         let mut vfov = 20.;
         let vup = Vector3::y();
@@ -109,6 +109,7 @@ impl Camera {
                 lookat = Point3::from([278., 278., 0.]);
                 direction = lookat - lookfrom;
                 vfov = 40.0;
+                aperture = 0.;
             }
             "simplelight" => {
 

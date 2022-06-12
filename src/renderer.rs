@@ -168,7 +168,7 @@ impl Renderer {
     #[inline]
     fn cal_norm_coords(&self, x: u32, y: u32) -> [f32; 2] {
         let (x_offset, y_offset) = if self.multisample != 1 {
-            (get_rand() - 0.5, get_rand() - 0.5)
+            (get_rand(), get_rand())
         } else {
             (0., 0.)
         };

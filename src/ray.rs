@@ -1,4 +1,3 @@
-use std::fmt::{Debug, Formatter};
 use crate::aabb::{AxisAlignedBoundingBox, BVHNode};
 use crate::material::Lambertian;
 use crate::types::{create_shared_mut, Shared, SharedHittable, SharedMaterial};
