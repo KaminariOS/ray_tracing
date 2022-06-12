@@ -1,30 +1,30 @@
 use crate::aabb::{AxisAlignedBoundingBox, BVHNode};
 use crate::material::Lambertian;
 use crate::types::{create_shared_mut, Shared, SharedHittable, SharedMaterial};
-use na::{Point3, Vector3};
+use na::{Point3, UnitVector3, Vector3};
 
 pub struct Ray {
     pub origin: Point3<f32>,
-    pub direction: Vector3<f32>,
+    pub direction: UnitVector3<f32>,
     pub time: f32,
 }
 
 impl Ray {
     pub fn at(&self, t: f32) -> Point3<f32> {
-        self.origin + t * self.direction
+        self.origin + t * self.direction.into_inner()
     }
-    pub fn new(origin: Point3<f32>, direction: Vector3<f32>, time: f32) -> Self {
+    pub fn new(origin: Point3<f32>, direction: UnitVector3<f32>, time: f32) -> Self {
         // assert_ne!(direction.norm_squared(), 0.);
         Self {
             origin,
-            direction: direction.normalize(),
+            direction,
             time,
         }
     }
 }
 impl Default for Ray {
     fn default() -> Self {
-        Self::new(Point3::origin(), Vector3::identity(), 0.)
+        Self::new(Point3::origin(), Vector3::y_axis(), 0.)
     }
 }
 
@@ -39,7 +39,7 @@ pub trait Hittable: Send + Sync {
 
 pub struct HitRecord {
     pub(crate) point: Point3<f32>,
-    pub(crate) normal: Vector3<f32>,
+    pub(crate) normal: UnitVector3<f32>,
     pub(crate) t: f32,
     pub uv: [f32; 2],
     pub front_face: bool,
@@ -50,7 +50,7 @@ impl Default for HitRecord {
     fn default() -> Self {
         Self {
             point: Point3::origin(),
-            normal: Vector3::y(),
+            normal: Vector3::y_axis(),
             t: f32::MAX,
             uv: [0.; 2],
             front_face: false,
@@ -60,8 +60,7 @@ impl Default for HitRecord {
 }
 
 impl HitRecord {
-    pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: Vector3<f32>) {
-        let outward_normal = outward_normal.normalize();
+    pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: UnitVector3<f32>) {
         self.front_face = ray.direction.dot(&outward_normal) < 0.;
         self.normal = if self.front_face {
             outward_normal

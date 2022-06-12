@@ -1,5 +1,5 @@
 use cfg_if::cfg_if;
-use na::Vector3;
+use na::{UnitVector3, Vector3};
 
 
 #[inline]
@@ -51,8 +51,8 @@ pub fn rand_vec3_in_unit_sphere() -> Vector3<f32> {
 }
 
 #[inline]
-pub fn rand_vec3_on_unit_sphere() -> Vector3<f32> {
-    rand_vec3_in_unit_sphere().normalize()
+pub fn rand_vec3_on_unit_sphere() -> UnitVector3<f32> {
+    UnitVector3::new_normalize(rand_vec3_in_unit_sphere())
 }
 
 #[allow(dead_code)]

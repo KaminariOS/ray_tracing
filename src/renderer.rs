@@ -197,8 +197,9 @@ impl Renderer {
         if let Some(hit_record) = self.world.read().unwrap().hit(r, 0.001, f32::INFINITY) {
             // let target = hit_record.normal + rand_vec3_on_unit_sphere();
             let emitted = hit_record.material.read().unwrap().emit(hit_record.uv, hit_record.point);
-            let scattered = if let Some((attenuation, scattered)) = hit_record.material.read().unwrap().scatter(r, &hit_record) {
-                attenuation.component_mul(&self.ray_color(&scattered, depth - 1))
+            let material = hit_record.material.read().unwrap();
+            let scattered = if let Some((attenuation, scattered, pdf)) = material.scatter(r, &hit_record) {
+               material.scattering_pdf(r, &hit_record, &scattered) * attenuation.component_mul(&self.ray_color(&scattered, depth - 1)) / pdf
             } else {
                 Color::zeros()
             };

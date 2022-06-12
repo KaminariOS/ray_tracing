@@ -3,12 +3,16 @@ use crate::ray::HitRecord;
 use crate::texture::SolidColor;
 use crate::types::{Color, create_shared_mut, RGB, Shared, SharedTexture};
 use crate::Ray;
-use na::{Point3, Vector3};
+use na::{Point3, UnitVector3};
+use std::f32::consts::PI;
 
 pub trait Material: Sync + Send {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)>;
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)>;
     fn emit(&self, _uv: [f32; 2], _point: Point3<f32>) -> Color {
         Color::zeros()
+    }
+    fn scattering_pdf(&self, _ray_in: &Ray, _hit_record: &HitRecord, _scattered: &Ray) -> f32 {
+       1.
     }
 }
 
@@ -26,18 +30,26 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
-        let mut scatter_dir = hit_record.normal + rand_vec3_on_unit_sphere();
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
+        let mut scatter_dir = UnitVector3::new_normalize(hit_record.normal.into_inner() + rand_vec3_on_unit_sphere().into_inner());
         if near_zero(scatter_dir) {
             scatter_dir = hit_record.normal;
         }
+        let scattered = Ray::new(hit_record.point, scatter_dir, ray_in.time);
+        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
         Some((
             self.albedo
                 .read()
                 .unwrap()
                 .value(hit_record.uv, hit_record.point),
-            Ray::new(hit_record.point, scatter_dir, ray_in.time),
+            scattered,
+            pdf
         ))
+    }
+
+    fn scattering_pdf(&self, _ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
+        let cosine = hit_record.normal.dot(&scattered.direction);
+        cosine.max(f32::EPSILON) / PI
     }
 }
 
@@ -47,8 +59,8 @@ pub struct Metal {
 }
 
 impl Metal {
-    fn reflect(v: Vector3<f32>, n: Vector3<f32>) -> Vector3<f32> {
-        v - 2. * n.dot(&v) * n
+    fn reflect(v: UnitVector3<f32>, n: UnitVector3<f32>) -> UnitVector3<f32> {
+        UnitVector3::new_unchecked(v.into_inner() - 2. * n.dot(&v) * n.into_inner())
     }
     pub fn new(albedo: RGB, fuzz: f32) -> Shared<Self> {
         create_shared_mut(Metal {
@@ -58,13 +70,17 @@ impl Metal {
     }
 }
 impl Material for Metal {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
         let reflected = Self::reflect(ray_in.direction, hit_record.normal);
-        let scatter_dir = reflected + self.fuzz * rand_vec3_in_unit_sphere();
+        let scatter_dir = reflected.into_inner() + self.fuzz * rand_vec3_in_unit_sphere();
+        let scattered =
+            Ray::new(hit_record.point, UnitVector3::new_normalize(scatter_dir), ray_in.time);
+        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
         if hit_record.normal.dot(&scatter_dir) > 0. {
             Some((
                 self.albedo,
-                Ray::new(hit_record.point, scatter_dir, ray_in.time),
+                scattered,
+                pdf
             ))
         } else {
             None
@@ -72,7 +88,7 @@ impl Material for Metal {
     }
 }
 
-fn near_zero(vec: Vector3<f32>) -> bool {
+fn near_zero(vec: UnitVector3<f32>) -> bool {
     let eps = 1.0e-8;
     vec.iter().all(|x| x.abs() < eps)
 }
@@ -88,11 +104,11 @@ impl Dielectric {
             index_of_refraction,
         })
     }
-    fn refract(incident: Vector3<f32>, normal: Vector3<f32>, index_ratio: f32) -> Vector3<f32> {
+    fn refract(incident: UnitVector3<f32>, normal: UnitVector3<f32>, index_ratio: f32) -> UnitVector3<f32> {
         let cos_theta = (-incident.dot(&normal)).min(1.);
-        let r_out_perp = index_ratio * (incident + cos_theta * normal);
-        let r_out_parallel = -(1. - r_out_perp.norm_squared()).abs().sqrt() * normal;
-        r_out_perp + r_out_parallel
+        let r_out_perp = index_ratio * (incident.into_inner() + cos_theta * normal.into_inner());
+        let r_out_parallel = -(1. - r_out_perp.norm_squared()).abs().sqrt() * normal.into_inner();
+        UnitVector3::new_normalize(r_out_perp + r_out_parallel)
     }
 
     fn reflectance(cosine: f32, ref_idx: f32) -> f32 {
@@ -103,7 +119,7 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
         let refraction_ratio = if hit_record.front_face {
             1. / self.index_of_refraction
         } else {
@@ -118,9 +134,13 @@ impl Material for Dielectric {
             } else {
                 Self::refract(ray_in.direction, hit_record.normal, refraction_ratio)
             };
+        let scattered =
+            Ray::new(hit_record.point, direction, ray_in.time);
+        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
         Some((
             Color::repeat(1.),
-            Ray::new(hit_record.point, direction, ray_in.time),
+            scattered,
+            pdf
         ))
     }
 }
@@ -139,7 +159,7 @@ impl DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-    fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
         None
     }
     fn emit(&self, uv: [f32; 2], point: Point3<f32>) -> Color {
@@ -163,9 +183,10 @@ impl Isotropic {
 }
 
 impl Material for Isotropic {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
         let scattered = Ray::new(hit_record.point, rand_vec3_on_unit_sphere(), ray_in.time);
         let color = self.albedo.read().unwrap().value(hit_record.uv, hit_record.point);
-        Some((color, scattered))
+        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
+        Some((color, scattered, pdf))
     }
 }

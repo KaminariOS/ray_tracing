@@ -1,4 +1,4 @@
-use na::Point3;
+use na::{Point3, UnitVector3, Vector3};
 use crate::rand_gen::{get_rand_usize_range, get_rand_vec3_range};
 use crate::types::Color;
 
@@ -6,14 +6,14 @@ const POINT_COUNT: usize = 256;
 type Perm = [usize; POINT_COUNT];
 
 pub struct Perlin {
-    rand_float: [Color; POINT_COUNT],
+    rand_float: [UnitVector3<f32>; POINT_COUNT],
     perm: [Perm; 3],
 }
 
 impl Perlin {
     pub fn new() -> Self {
         let rand_float = [0; POINT_COUNT].map(|_|
-            get_rand_vec3_range(-1., 1.).normalize()
+            UnitVector3::new_normalize(get_rand_vec3_range(-1., 1.))
         );
         Self {
             rand_float,
@@ -25,7 +25,7 @@ impl Perlin {
         let indexes: Vec<_> =  p.iter()
             .map(|&x| x.floor() as i32)
             .collect();
-        let mut c = [[[Color::zeros(); 2]; 2]; 2];
+        let mut c = [[[Vector3::y_axis(); 2]; 2]; 2];
         for di in 0..2 {
             for dj  in  0..2 {
                 for dk in 0..2 {
@@ -41,7 +41,7 @@ impl Perlin {
         }
         Self::trilinear_interp(c, p)
     }
-    fn trilinear_interp(c: [[[Color; 2]; 2]; 2], p: Point3<f32>) -> f32 {
+    fn trilinear_interp(c: [[[UnitVector3<f32>; 2]; 2]; 2], p: Point3<f32>) -> f32 {
         let uvw: Vec<_> = p.iter().map(|&x| x - x.floor()).map(|x|
             x * x * (3. - 2. * x)
         ).collect();

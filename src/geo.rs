@@ -2,7 +2,7 @@ use crate::aabb::AxisAlignedBoundingBox;
 use crate::ray::{HitRecord, Hittable, HittableList};
 use crate::types::{create_shared_mut, RGB, Shared, SharedHittable, SharedMaterial, SharedSphere, SharedTexture};
 use crate::{camera, Ray};
-use na::{Point3, Rotation3, Vector3};
+use na::{Point3, Rotation3, UnitVector3, Vector3};
 use strum::{EnumIter, IntoEnumIterator};
 use crate::material::Isotropic;
 use crate::rand_gen::get_rand;
@@ -97,7 +97,7 @@ impl Hittable for Sphere {
         hit_record.point = ray.at(root);
         let outward_normal = (hit_record.point - self.get_center(ray.time)) / self.radius;
         hit_record.uv = Self::get_sphere_uv(outward_normal.into());
-        hit_record.set_face_normal(ray, outward_normal);
+        hit_record.set_face_normal(ray, UnitVector3::new_normalize(outward_normal));
         hit_record.material = self.material.clone();
         Some(hit_record)
     }
@@ -182,7 +182,7 @@ impl Hittable for AxisAlignedRect {
         hit_record.uv = [upper[xi] / lower[xi], upper[yi] / lower[yi]];
         let mut outward_normal = Vector3::zeros();
         outward_normal[zi] = 1.;
-        hit_record.set_face_normal(ray, outward_normal);
+        hit_record.set_face_normal(ray, UnitVector3::new_unchecked(outward_normal));
         hit_record.material = self.material.clone();
         hit_record.point = xyz;
         hit_record.t = t;

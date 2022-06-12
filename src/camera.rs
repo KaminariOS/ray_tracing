@@ -1,5 +1,5 @@
 use crate::Ray;
-use na::{Point3, Vector3};
+use na::{Point3, UnitVector3, Vector3};
 
 #[allow(dead_code)]
 pub struct Camera {
@@ -9,7 +9,7 @@ pub struct Camera {
     pub lower_left_corner: Point3<f32>,
     pub(crate) aspect_ratio: f32,
     vfov: f32,
-    w: Vector3<f32>,
+    w: UnitVector3<f32>,
     u: Vector3<f32>,
     v: Vector3<f32>,
     vup: Vector3<f32>,
@@ -28,7 +28,7 @@ pub fn degree_to_radian(degree: f32) -> f32 {
 impl Camera {
     pub fn new(
         lookfrom: Point3<f32>,
-        direction: Vector3<f32>,
+        direction: UnitVector3<f32>,
         vup: Vector3<f32>,
         vfov: f32,
         aspect_ratio: f32,
@@ -42,14 +42,14 @@ impl Camera {
         let viewport_height = 2. * h;
         let viewport_width = viewport_height * aspect_ratio;
 
-        let w = -direction.normalize();
+        let w = -direction;
         let u = vup.cross(&w);
         let v = w.cross(&u);
 
         let horizontal = focus_dist * viewport_width * u;
         let vertical = focus_dist * viewport_height * v;
         let origin = lookfrom;
-        let lower_left_corner = origin - horizontal / 2. - vertical / 2. - w * focus_dist;
+        let lower_left_corner = origin - horizontal / 2. - vertical / 2. - w.into_inner() * focus_dist;
         Self {
             origin,
             horizontal,
@@ -88,7 +88,7 @@ impl Camera {
         let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
             self.origin + offset,
-            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
+            UnitVector3::new_normalize(self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset),
             get_rand_range(self.time0, self.time1),
         )
     }
@@ -127,7 +127,7 @@ impl Camera {
         };
         Camera::new(
             lookfrom,
-            direction,
+            UnitVector3::new_normalize(direction),
             vup,
             vfov,
             aspect_ratio,
