@@ -2,6 +2,7 @@ use crate::aabb::{AxisAlignedBoundingBox, BVHNode};
 use crate::material::Lambertian;
 use crate::types::{create_shared_mut, Shared, SharedHittable, SharedMaterial};
 use na::{Point3, UnitVector3, Vector3};
+use crate::rand_gen::get_rand_usize_range;
 
 pub struct Ray {
     pub origin: Point3<f32>,
@@ -32,6 +33,15 @@ pub trait Hittable: Send + Sync {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox>;
     fn get_label(&self) -> Option<&String> {
+        None
+    }
+    fn pdf_val(&self, _origin: Point3<f32>, _v: UnitVector3<f32>) -> f32 {
+        0.
+    }
+    fn random(&self, _origin: Point3<f32>) -> UnitVector3<f32> {
+        Vector3::x_axis()
+    }
+    fn get_one(&self) -> Option<SharedHittable> {
         None
     }
 }
@@ -131,5 +141,15 @@ impl Hittable for HittableList {
 
     fn get_label(&self) -> Option<&String> {
         self.label.as_ref()
+    }
+    // fn get_one(&self) -> Option<SharedHittable> {
+    //     Some(self.objects[get_rand_usize_range(0, self.objects.len())].clone())
+    // }
+
+    fn pdf_val(&self, origin: Point3<f32>, v: UnitVector3<f32>) -> f32 {
+        self.objects.iter().map(|x| x.read().unwrap().pdf_val(origin, v)).sum::<f32>() / self.objects.len() as f32
+    }
+    fn random(&self, origin: Point3<f32>) -> UnitVector3<f32> {
+        self.objects[get_rand_usize_range(0, self.objects.len())].read().unwrap().random(origin)
     }
 }

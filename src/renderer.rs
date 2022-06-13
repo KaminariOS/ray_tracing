@@ -1,9 +1,11 @@
 use crate::camera::Camera;
-use crate::types::{Color, SharedHittable};
+use crate::types::Color;
 use crate::Ray;
 use cfg_if::cfg_if;
 use derivative::Derivative;
 use na::{Vector3, Vector4};
+use crate::material::{ScatterRecord, ScatterType};
+use crate::pdf::{HittablePDF, MixPDF};
 cfg_if! {
     if #[cfg(feature = "window")] {
 use pixels::Pixels;
@@ -11,6 +13,7 @@ use crate::gui::Gui;
     }
 }
 use crate::rand_gen::get_rand;
+use crate::scene::Scene;
 #[cfg(feature = "window")]
 use crate::scene::select_scene;
 
@@ -26,16 +29,15 @@ pub struct Renderer {
     actual_width: u32,
     actual_height: u32,
     #[derivative(Debug = "ignore")]
-    world: SharedHittable,
+    scene: Scene,
     pub(crate) multisample: usize,
     pub(crate) max_depth: usize,
     #[derivative(Debug = "ignore")]
     pub dirty: bool,
-    background: Color
 }
 
 impl Renderer {
-    pub fn new(width: u32, height: u32, (world, background): (SharedHittable, Color), camera: Camera) -> Self {
+    pub fn new(width: u32, height: u32, scene: Scene, camera: Camera) -> Self {
         Self {
             width,
             height,
@@ -43,11 +45,10 @@ impl Renderer {
             scale: 1,
             camera,
             actual_height: height,
-            world,
+            scene,
             multisample: 4,
             max_depth: 10,
             dirty: true,
-            background
         }
     }
 
@@ -101,6 +102,9 @@ impl Renderer {
                             let ray = self.camera.get_ray(u, v);
                             self.ray_color(&ray, self.max_depth)
                         })
+                        .map(|x|
+                            Vector3::from_vec(x.iter().map(|&c| if c.is_nan() {0.} else if c.is_infinite() {1.} else {c}).collect::<Vec<_>>())
+                        )
                         .fold(Vector3::zeros(), |acc, next| acc + next)
                         / self.multisample as f32;
                     let mut rgb = rgba_float
@@ -184,28 +188,48 @@ impl Renderer {
         self.multisample = gui.sample_count;
         self.max_depth = gui.max_depth;
         let scene = gui.scene.to_str();
-        if self.world.read().unwrap().get_label().filter(|&label| label == scene).is_none() {
-            let (world, background) = select_scene(scene);
-            self.world = world;
-            self.background = background;
+        if self.scene.world.read().unwrap().get_label().filter(|&label| label == scene).is_none() {
+            self.camera = Camera::select_camera(self.camera.aspect_ratio, scene);
+            self.scene = select_scene(scene);
         }
     }
     fn ray_color(&self, r: &Ray, depth: usize) -> Color {
         if depth == 0 {
             return Color::zeros();
         }
-        if let Some(hit_record) = self.world.read().unwrap().hit(r, 0.001, f32::INFINITY) {
+        if let Some(hit_record) = self.scene.world.read().unwrap().hit(r, 0.001, f32::INFINITY) {
             // let target = hit_record.normal + rand_vec3_on_unit_sphere();
-            let emitted = hit_record.material.read().unwrap().emit(hit_record.uv, hit_record.point);
+            let emitted = hit_record.material.read().unwrap().emit(&hit_record).unwrap_or(Color::zeros());
             let material = hit_record.material.read().unwrap();
-            let scattered = if let Some((attenuation, scattered, pdf)) = material.scatter(r, &hit_record) {
-               material.scattering_pdf(r, &hit_record, &scattered) * attenuation.component_mul(&self.ray_color(&scattered, depth - 1)) / pdf
+            let scattered = if let Some(ScatterRecord {s_type, attenuation}) = material.scatter(r, &hit_record) {
+                let (scattered, pdf_val) = match s_type {
+                 ScatterType::Diffuse(cosine_pdf) => {
+                     let mixed_pdf = if self.scene.lights.read().unwrap().objects.is_empty() {
+                         cosine_pdf
+                     } else {
+                         let hittable_pdf = HittablePDF::new(
+                             hit_record.point,
+                             self.scene.lights.clone()
+                         );
+                         MixPDF::new(cosine_pdf, hittable_pdf)
+                     };
+                     // let mixed_pdf = hittable_pdf;
+                    let scattered = Ray::new(hit_record.point, mixed_pdf.generate(), r.time);
+                    let pdf_val = mixed_pdf.value(scattered.direction);
+                    (scattered, pdf_val)
+                }
+                ScatterType::Specular(scattered) | ScatterType::ISO(scattered) => (scattered, 1.)
+            };
+
+                // log::info!("pdf_m: {:?}; pdf_val: {}", pdf_m, pdf_val);
+           // pdf_m *
+               attenuation.component_mul(&self.ray_color(&scattered, depth - 1)) / pdf_val
             } else {
                 Color::zeros()
             };
             emitted + scattered
         } else {
-            self.background
+            self.scene.background
         }
 
     }

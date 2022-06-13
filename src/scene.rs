@@ -1,4 +1,4 @@
-use crate::geo::{Sphere, AxisAlignedRect, AlignedAxis, Cuboid, RotationY, Translation, ConstantMedium};
+use crate::geo::{Sphere, AxisAlignedRect, AlignedAxis, Cuboid, RotationY, Translation, ConstantMedium, FlipFace};
 use crate::material::{Dielectric, DiffuseLight, Lambertian, Metal};
 use crate::rand_gen::{get_rand, get_rand_range, get_rand_vec3_range};
 use crate::ray::HittableList;
@@ -6,6 +6,21 @@ use crate::texture::{CheckerTexture, ImageTexture, NoiseTexture};
 use crate::types::{Color, Shared, SharedHittable, SharedMaterial, SharedSphere};
 use na::{Point3, Vector3};
 use crate::aabb::BVHNode;
+
+
+pub fn select_scene(name: &str) -> Scene {
+    log::info!("Building scene: {}", name);
+    match name {
+        "random" => create_random_scene(name),
+        "2psp" => two_perlin_spheres(name),
+        "earth" => earth(name),
+        "simplelight" => simplelight(name),
+        "cornell" => cornell_box(name),
+        "final" => final_scene(name),
+        "smoke" => cornell_smoke(name),
+        "2sp" | _ => two_spheres(name),
+    }
+}
 
 #[allow(dead_code)]
 fn create_objs() -> Shared<HittableList> {
@@ -28,7 +43,7 @@ fn create_objs() -> Shared<HittableList> {
         ],  None)
 }
 
-fn create_random_scene(name: &str) -> SharedHittable {
+fn create_random_scene(name: &str) -> Scene {
     let num = 11;
     let mut objects: Vec<_> = (-num..num)
         .map(|a| (-num..num).filter_map(move |b| create_random_sphere(a, b)))
@@ -45,13 +60,17 @@ fn create_random_scene(name: &str) -> SharedHittable {
     let material3 = Metal::new([0.7, 0.6, 0.5], 0.);
     let vec: Vec<SharedHittable> = vec![
         Sphere::new([0., -1000., 0.], 1000., material_ground),
-        Sphere::new([0., 1., 0.], 1., material1),
         Sphere::new([-4., 1., 0.], 1., material2),
         Sphere::new([4., 1., 0.], 1., material3),
     ];
     objects.extend(vec);
-    HittableList::new_bvh(objects, 0., 1.,
-                          Some(name.into()))
+    let lights: Vec<SharedHittable> = vec![
+        Sphere::new([0., 1., 0.], 1., material1),
+    ];
+    Scene::new(lights,
+    objects,
+         Color::from([0.7, 0.8, 1.]),
+        name)
 }
 
 fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
@@ -83,76 +102,65 @@ fn create_random_sphere(a: i32, b: i32) -> Option<SharedSphere> {
     }
 }
 
-pub fn select_scene(name: &str) -> (SharedHittable, Color) {
-    log::info!("Building scene: {}", name);
-    (match name {
-        "random" => create_random_scene(name),
-        "2psp" => two_perlin_spheres(name),
-        "earth" => earth(name),
-        "simplelight" => simplelight(name),
-        "cornell" => cornell_box(name),
-        "final" => final_scene(name),
-        "smoke" => cornell_smoke(name),
-        "2sp" | _ => two_spheres(name),
-    },
-     match name {
-         "simplelight" | "cornell" | "final" | "smoke" => Color::zeros(),
-         _ => Color::from([0.7, 0.8, 1.]),
-     }
-    )
-}
 
-fn two_spheres(name: &str) -> Shared<HittableList>  {
+fn two_spheres(name: &str) -> Scene  {
     let checker = CheckerTexture::new([0.2, 0.3, 0.1], [0.9; 3]);
     let mat = Lambertian::new(checker);
-    HittableList::new(vec![
+    Scene::new(vec![],
+    vec![
         Sphere::new([0., -10., 0.], 10., mat.clone()),
         Sphere::new([0., 10., 0.], 10., mat),
-    ], Some(name.into()))
+    ], Color::from([0.7, 0.8, 1.]), name)
 }
 
-fn two_perlin_spheres(name: &str) -> Shared<HittableList> {
+fn two_perlin_spheres(name: &str) -> Scene {
     let pertex = NoiseTexture::new(4.);
-    HittableList::new(
+    Scene::new(
+        vec![ ],
         vec![
             Sphere::new([0., -1000., 0.], 1000., Lambertian::new(pertex.clone())),
             Sphere::new([0., 2., 0.], 2., Lambertian::new(pertex))
         ],
-        Some(name.into())
-    )
+        Color::from([0.7, 0.8, 1.]), name)
 }
 
-fn earth(name: &str) -> SharedSphere {
+fn earth(name: &str) -> Scene {
    let earth_texture = ImageTexture::new("earthmap.jpg");
     let earth_surface = Lambertian::new(earth_texture);
-    Sphere::new_with_label([0.; 3], 2., earth_surface, Some(name.into()))
+   Scene::new(vec![], vec![Sphere::new_with_label([0.; 3], 2., earth_surface, Some(name.into()))], Color::from([0.7, 0.8, 1.]), name)
 }
 
-fn simplelight(name: &str) -> Shared<HittableList> {
+fn simplelight(name: &str) -> Scene {
     let pertex = NoiseTexture::new(4.);
     let diff_light = DiffuseLight::from_color([4.; 3]);
-    HittableList::new(
+    Scene::new(
+        vec![],
         vec![
             Sphere::new([0., -1000., 0.], 1000., Lambertian::new(pertex.clone())),
             Sphere::new([0., 2., 0.], 2., Lambertian::new(pertex)),
             AxisAlignedRect::new(diff_light,-4., [3., 1.], [5., 3.], AlignedAxis::XY)
         ],
-        Some(name.into())
+        Color::zeros(),
+        name
     )
 }
 
-fn cornell_box(label: &str) -> Shared<HittableList> {
+fn cornell_box(label: &str) -> Scene {
     let red = Lambertian::from_color([0.65, 0.05, 0.05]);
     let white = Lambertian::from_color([0.73; 3]);
     let green = Lambertian::from_color([0.12, 0.45, 0.15]);
-    let light = DiffuseLight::from_color([15.; 3]);
+    let light = DiffuseLight::from_color([7.; 3]);
     let length = 555.;
     let square = [length; 2];
+    let glass = Dielectric::new(1.5);
+    let lights: Vec<SharedHittable> = vec![
+        FlipFace::new(AxisAlignedRect::new(light, length - 1., [213., 227.], [343., 332.], AlignedAxis::XZ)),
+        Sphere::new([190., 90., 190.], 90., glass)
+    ];
+    // let aluminum = Metal::new([0.8, 0.85, 0.88], 0.);
     let objects: Vec<SharedHittable> = vec![
         AxisAlignedRect::new(green, length, [0., 0.], square, AlignedAxis::YZ),
         AxisAlignedRect::new(red, 0., [0., 0.], square, AlignedAxis::YZ),
-
-        AxisAlignedRect::new(light, length - 1., [213., 227.], [343., 332.], AlignedAxis::XZ),
         AxisAlignedRect::new(white.clone(), 0., [0., 0.], square, AlignedAxis::XZ),
         AxisAlignedRect::new(white.clone(), length, [0., 0.], square, AlignedAxis::XZ),
 
@@ -162,16 +170,16 @@ fn cornell_box(label: &str) -> Shared<HittableList> {
             let cuboid = RotationY::new(cuboid, 15.);
             Translation::new(cuboid, [265., 0., 295.])
         },
-        {
-            let cuboid = Cuboid::new([0.; 3], [165.; 3], white.clone());
-            let cuboid = RotationY::new(cuboid, -18.);
-            Translation::new(cuboid, [130., 0., 65.])
-        }
+        // {
+        //     let cuboid = Cuboid::new([0.; 3], [165.; 3], white.clone());
+        //     let cuboid = RotationY::new(cuboid, -18.);
+        //     Translation::new(cuboid, [130., 0., 65.])
+        // }
     ];
-    HittableList::new(objects, Some(label.into()))
+    Scene::new(lights, objects, Color::zeros(), label)
 }
 
-fn cornell_smoke(label: &str) -> Shared<HittableList> {
+fn cornell_smoke(label: &str) -> Scene {
     let red = Lambertian::from_color([0.65, 0.05, 0.05]);
     let white = Lambertian::from_color([0.73; 3]);
     let green = Lambertian::from_color([0.12, 0.45, 0.15]);
@@ -179,11 +187,14 @@ fn cornell_smoke(label: &str) -> Shared<HittableList> {
     let length = 555.;
     let square = [length; 2];
     let corner = [0.; 2];
+    let lights = vec![
+        FlipFace::new(
+        AxisAlignedRect::new(light, length - 1., [113., 127.], [443., 432.], AlignedAxis::XZ)
+        ) as SharedHittable];
     let objects: Vec<SharedHittable> = vec![
         AxisAlignedRect::new(green, length, [0., 0.], square, AlignedAxis::YZ),
         AxisAlignedRect::new(red, 0., [0., 0.], square, AlignedAxis::YZ),
 
-        AxisAlignedRect::new(light, length - 1., [113., 127.], [443., 432.], AlignedAxis::XZ),
         AxisAlignedRect::new(white.clone(), 0., corner, square, AlignedAxis::XZ),
         AxisAlignedRect::new(white.clone(), length, corner, square, AlignedAxis::XZ),
         AxisAlignedRect::new(white.clone(), length, corner, square, AlignedAxis::XY),
@@ -201,10 +212,15 @@ fn cornell_smoke(label: &str) -> Shared<HittableList> {
             ConstantMedium::new_c(cuboid, 0.01, [1.; 3])
         }
     ];
-    HittableList::new(objects, Some(label.into()))
+    Scene::new(
+        lights,
+        objects,
+        Color::zeros(),
+        label
+    )
 }
 
-fn final_scene(label: &str) -> SharedHittable {
+fn final_scene(label: &str) -> Scene {
     let ground = Lambertian::from_color([0.48, 0.83, 0.53]);
     let boxes_per_side = 20usize;
     let w = 100.;
@@ -220,7 +236,7 @@ fn final_scene(label: &str) -> SharedHittable {
     let boxes = BVHNode::new(&boxes, 0., 1., None);
 
     let light = DiffuseLight::from_color([7.; 3]);
-    let xz = AxisAlignedRect::new(light, 554., [123., 147.], [423., 412.], AlignedAxis::XZ);
+    let xz = FlipFace::new(AxisAlignedRect::new(light, 554., [123., 147.], [423., 412.], AlignedAxis::XZ));
 
     let center1 = Point3::from([400., 400., 200.]);
     let center2 = center1 + Vector3::x() * 30.;
@@ -244,9 +260,36 @@ fn final_scene(label: &str) -> SharedHittable {
     let boxes2 = BVHNode::new(&boxes2, 0., 1., None);
     let boxes2 = RotationY::new(boxes2, 15.);
     let boxes2 = Translation::new(boxes2, [-100., 270., 395.]);
-    HittableList::new(vec![
-        boxes, xz, moving_sphere, dielectric_sphere, metal_sphere, dielectric_medium,
+    let lights: Vec<SharedHittable> =vec![xz,
+                                        dielectric_sphere
+    ];
+    let world: Vec<SharedHittable> = vec![
+        boxes, moving_sphere, metal_sphere, dielectric_medium,
         dielectric_medium2,
         earth, pertext, boxes2
-    ], Some(label.into()))
+    ];
+    Scene::new(
+        lights,
+        world,
+        Color::zeros(), label)
+}
+
+pub struct Scene {
+    pub lights: Shared<HittableList>,
+    pub world: SharedHittable,
+    pub background: Color,
+    pub label: String
+}
+
+impl Scene {
+    pub fn new(lights: Vec<SharedHittable>, mut world: Vec<SharedHittable>, background: Color, label: &str) -> Self {
+        let lights = HittableList::new(lights, None);
+        world.push(lights.clone());
+        Self {
+            lights,
+            world: HittableList::new(world, Some(label.into())),
+            background,
+            label: label.into()
+        }
+    }
 }

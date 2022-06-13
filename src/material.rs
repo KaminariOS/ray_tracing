@@ -1,22 +1,39 @@
-use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere, random_cosine_direction};
+use std::f32::consts::PI;
+use crate::rand_gen::{get_rand, rand_vec3_in_unit_sphere, rand_vec3_on_unit_sphere};
 use crate::ray::HitRecord;
 use crate::texture::SolidColor;
 use crate::types::{Color, create_shared_mut, RGB, Shared, SharedTexture};
 use crate::Ray;
-use na::{Point3, UnitVector3};
-use std::f32::consts::PI;
-use crate::onb::ONB;
+use na::UnitVector3;
+use crate::pdf::{CosinePDF, PDF};
 
 pub trait Material: Sync + Send {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)>;
-    fn emit(&self, _uv: [f32; 2], _point: Point3<f32>) -> Color {
-        Color::zeros()
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRecord>;
+    fn emit(&self, _hit_record: &HitRecord) -> Option<Color> {
+        None
     }
     fn scattering_pdf(&self, _ray_in: &Ray, _hit_record: &HitRecord, _scattered: &Ray) -> f32 {
        1.
     }
 }
+pub enum ScatterType {
+    Specular(Ray),
+    Diffuse(Box<dyn PDF>),
+    ISO(Ray)
+}
+pub struct ScatterRecord {
+    pub s_type: ScatterType,
+    pub attenuation: Color,
+}
 
+impl ScatterRecord {
+    pub fn new(s_type: ScatterType,attenuation: Color) -> Option<Self> {
+        Some(Self {
+            attenuation,
+            s_type
+        })
+    }
+}
 pub struct Lambertian {
     albedo: SharedTexture,
 }
@@ -31,28 +48,21 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
-        let uvw = ONB::build_from_w(hit_record.normal);
-        let mut scatter_dir = uvw.local_dir(random_cosine_direction());
-        assert_eq!(uvw.w(), hit_record.normal);
-        if near_zero(scatter_dir) {
-            scatter_dir = hit_record.normal;
-        }
-        let scattered = Ray::new(hit_record.point, scatter_dir, ray_in.time);
-        let pdf = uvw.w().dot(&scatter_dir) / PI;
-        Some((
-            self.albedo
+    fn scatter(&self, _ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRecord> {
+        let s_type = ScatterType::Diffuse(CosinePDF::new(hit_record.normal));
+        ScatterRecord::new(
+                s_type,
+                self.albedo
                 .read()
                 .unwrap()
-                .value(hit_record.uv, hit_record.point),
-            scattered,
-            pdf
-        ))
+                .value(hit_record.uv,
+                hit_record.point)
+            )
     }
 
     fn scattering_pdf(&self, _ray_in: &Ray, hit_record: &HitRecord, scattered: &Ray) -> f32 {
         let cosine = hit_record.normal.dot(&scattered.direction);
-        cosine.max(f32::EPSILON) / PI
+        cosine.max(0.001) / PI
     }
 }
 
@@ -73,27 +83,21 @@ impl Metal {
     }
 }
 impl Material for Metal {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRecord> {
         let reflected = Self::reflect(ray_in.direction, hit_record.normal);
         let scatter_dir = reflected.into_inner() + self.fuzz * rand_vec3_in_unit_sphere();
         let scattered =
             Ray::new(hit_record.point, UnitVector3::new_normalize(scatter_dir), ray_in.time);
-        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
+        let s_type = ScatterType::Specular(scattered);
         if hit_record.normal.dot(&scatter_dir) > 0. {
-            Some((
+            ScatterRecord::new(
+                s_type,
                 self.albedo,
-                scattered,
-                pdf
-            ))
+            )
         } else {
             None
         }
     }
-}
-
-fn near_zero(vec: UnitVector3<f32>) -> bool {
-    let eps = 1.0e-8;
-    vec.iter().all(|x| x.abs() < eps)
 }
 
 pub struct Dielectric {
@@ -122,7 +126,7 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRecord> {
         let refraction_ratio = if hit_record.front_face {
             1. / self.index_of_refraction
         } else {
@@ -139,12 +143,11 @@ impl Material for Dielectric {
             };
         let scattered =
             Ray::new(hit_record.point, direction, ray_in.time);
-        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
-        Some((
-            Color::repeat(1.),
-            scattered,
-            pdf
-        ))
+        let s_type = ScatterType::Specular(scattered);
+        ScatterRecord::new(
+            s_type,
+            Color::repeat(1.)
+        )
     }
 }
 
@@ -162,11 +165,13 @@ impl DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-    fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
+    fn scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<ScatterRecord> {
         None
     }
-    fn emit(&self, uv: [f32; 2], point: Point3<f32>) -> Color {
-        self.texture.read().unwrap().value(uv, point)
+    fn emit(&self, hit_record: &HitRecord) -> Option<Color> {
+        if hit_record.front_face {
+            Some(self.texture.read().unwrap().value(hit_record.uv, hit_record.point))
+        } else {None}
     }
 }
 
@@ -186,10 +191,10 @@ impl Isotropic {
 }
 
 impl Material for Isotropic {
-    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray, f32)> {
+    fn scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterRecord> {
         let scattered = Ray::new(hit_record.point, rand_vec3_on_unit_sphere(), ray_in.time);
         let color = self.albedo.read().unwrap().value(hit_record.uv, hit_record.point);
-        let pdf = self.scattering_pdf(ray_in, hit_record, &scattered);
-        Some((color, scattered, pdf))
+        let s_type = ScatterType::ISO(scattered);
+        ScatterRecord::new(s_type, color)
     }
 }

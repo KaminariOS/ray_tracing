@@ -5,7 +5,8 @@ use crate::{camera, Ray};
 use na::{Point3, Rotation3, UnitVector3, Vector3};
 use strum::{EnumIter, IntoEnumIterator};
 use crate::material::Isotropic;
-use crate::rand_gen::get_rand;
+use crate::onb::ONB;
+use crate::rand_gen::{get_rand, get_rand_range};
 use crate::texture::SolidColor;
 
 const PI: f32 = std::f32::consts::PI;
@@ -72,6 +73,16 @@ impl Sphere {
         let phi = (-p.z).atan2(p.x) + PI;
         [phi / (2. * PI), theta / PI]
     }
+
+    fn random_to_sphere(&self, d: f32) -> UnitVector3<f32>{
+        let r1 = get_rand();
+        let r2 = get_rand();
+        let z = 1. + r2 * ((1. - self.radius * self.radius / d).sqrt() - 1.);
+        let phi = 2. * PI * r1;
+        let x = phi.cos() * (1. - z * z).sqrt();
+        let y = phi.sin() * (1. - z * z).sqrt();
+        UnitVector3::new_unchecked(Vector3::from([x, y, z]))
+    }
 }
 
 impl Hittable for Sphere {
@@ -120,6 +131,21 @@ impl Hittable for Sphere {
 
     fn get_label(&self) -> Option<&String> {
         self.label.as_ref()
+    }
+
+    fn pdf_val(&self, origin: Point3<f32>, v: UnitVector3<f32>) -> f32 {
+        if let Some(_hit_record) = self.hit(&Ray::new(origin, v, 0.), 0.001, f32::INFINITY) {
+          let cos_theta_max = (1. - self.radius * self.radius / (self.center0 - origin).norm_squared()).sqrt();
+          let solid_angle = 2. * PI * (1. - cos_theta_max);
+        return 1. / solid_angle
+        }
+        0.
+    }
+    fn random(&self, origin: Point3<f32>) -> UnitVector3<f32> {
+        let direction = self.center0 - origin;
+        let dis_sq = direction.norm_squared();
+        let uvw = ONB::build_from_w(UnitVector3::new_normalize(direction));
+        uvw.local_dir(self.random_to_sphere(dis_sq))
     }
 }
 
@@ -193,6 +219,27 @@ impl Hittable for AxisAlignedRect {
         let output_box = AxisAlignedBoundingBox::new(self.p0, self.p1);
         Some(output_box)
     }
+
+    fn pdf_val(&self, origin: Point3<f32>, v: UnitVector3<f32>) -> f32 {
+        if let Some(hit_record) = self.hit(&Ray::new(origin, v, 0.2), 0.001, f32::INFINITY) {
+            let [xi, yi, _] = self.axis.get_indexes();
+            let diag = self.p1 - self.p0;
+            let area = (diag[xi] * diag[yi]).abs();
+            let dis_squared = hit_record.t * hit_record.t * v.norm_squared();
+            let cosine = v.dot(&hit_record.normal).abs();
+            return dis_squared / (cosine * area)
+        }
+        0.
+    }
+    fn random(&self, origin: Point3<f32>) -> UnitVector3<f32> {
+        let [xi, yi, zi] = self.axis.get_indexes();
+        let mut xyz = [0.; 3];
+        xyz[xi] = get_rand_range(self.p0[xi], self.p1[xi]);
+        xyz[yi] = get_rand_range(self.p0[yi], self.p1[yi]);
+        xyz[zi] = (self.p0[zi] + self.p1[zi]) / 2.;
+        let random_point = Point3::from(xyz);
+        UnitVector3::new_normalize(random_point - origin)
+    }
 }
 
 pub struct Cuboid {
@@ -236,6 +283,9 @@ impl Hittable for Cuboid {
     fn bounding_box(&self, _time0: f32, _time1: f32) -> Option<AxisAlignedBoundingBox> {
         Some(AxisAlignedBoundingBox::new(self.cuboid_min, self.cuboid_max))
     }
+    fn get_one(&self) -> Option<SharedHittable> {
+        self.sides.read().unwrap().get_one()
+    }
 }
 
 pub struct Translation {
@@ -270,6 +320,12 @@ impl Hittable for Translation {
         } else {
             None
         }
+    }
+    fn pdf_val(&self, origin: Point3<f32>, v: UnitVector3<f32>) -> f32 {
+        self.obj.read().unwrap().pdf_val(origin, v)
+    }
+    fn random(&self, origin: Point3<f32>) -> UnitVector3<f32> {
+        self.obj.read().unwrap().random(origin)
     }
 }
 
@@ -331,6 +387,7 @@ impl Hittable for RotationY {
     fn bounding_box(&self, _time0: f32, _time1: f32) -> Option<AxisAlignedBoundingBox> {
         self.bbox
     }
+
 }
 
 pub struct ConstantMedium {
@@ -380,4 +437,38 @@ impl Hittable for ConstantMedium {
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox> {
         self.boundary.read().unwrap().bounding_box(time0, time1)
     }
+}
+
+pub struct FlipFace {
+    obj: SharedHittable
+}
+
+impl FlipFace {
+    pub fn new(obj: SharedHittable) -> Shared<Self> {
+        create_shared_mut(Self{
+            obj
+        })
+    }
+}
+
+impl Hittable for FlipFace {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        self.obj.read().unwrap().hit(ray, t_min, t_max).map(|mut rec| {
+            rec.front_face = !rec.front_face;
+            rec
+        })
+    }
+
+    fn bounding_box(&self, time0: f32, time1: f32) -> Option<AxisAlignedBoundingBox> {
+        self.obj.read().unwrap().bounding_box(time0, time1)
+    }
+    fn pdf_val(&self, origin: Point3<f32>, v: UnitVector3<f32>) -> f32 {
+        self.obj.read().unwrap().pdf_val(origin, v)
+    }
+    fn random(&self, origin: Point3<f32>) -> UnitVector3<f32> {
+        self.obj.read().unwrap().random(origin)
+    }
+    // fn get_one(&self) -> Option<SharedHittable> {
+    //     Some({let x = self.obj.read().unwrap().get_one(); x}.unwrap_or(self.obj.clone()))
+    // }
 }

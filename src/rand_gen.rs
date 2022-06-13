@@ -79,7 +79,8 @@ pub fn rand_vec3_in_unit_disk() -> Vector3<f32> {
 
 pub fn random_cosine_direction() -> UnitVector3<f32> {
     let r1 = get_rand();
-    let r2 = get_rand();
+    let r2 = get_rand_range(0., 0.9);
+    // let r2 = get_rand();
     let z = (1. - r2).sqrt();
     let phi = 2. * PI * r1;
     let r2_sq = r2.sqrt();
