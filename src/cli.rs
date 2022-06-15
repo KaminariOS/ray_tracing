@@ -36,4 +36,9 @@ pub fn image_mode() {
         image::ColorType::Rgba8,
     )
     .ok();
+    std::process::Command::new("sh")
+        .arg("-c")
+        .arg("play /usr/share/sounds/Oxygen-Im-New-Mail.ogg")
+        .output()
+        .expect("Failed to play");
 }

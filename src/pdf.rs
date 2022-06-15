@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use na::{Point3, UnitVector3};
 use crate::onb::ONB;
 use crate::rand_gen::{get_rand, random_cosine_direction};
@@ -23,7 +24,7 @@ impl CosinePDF {
 impl PDF for CosinePDF{
     fn value(&self, direction: UnitVector3<f32>) -> f32 {
         let cosine = direction.dot(&self.uvw.w());
-        if cosine <= 0. { 0. } else {2. * cosine }
+        if cosine <= 0. { 0.0001 } else { cosine / PI }
     }
 
     fn generate(&self) -> UnitVector3<f32> {

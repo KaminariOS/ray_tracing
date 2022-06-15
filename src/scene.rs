@@ -149,7 +149,7 @@ fn cornell_box(label: &str) -> Scene {
     let red = Lambertian::from_color([0.65, 0.05, 0.05]);
     let white = Lambertian::from_color([0.73; 3]);
     let green = Lambertian::from_color([0.12, 0.45, 0.15]);
-    let light = DiffuseLight::from_color([7.; 3]);
+    let light = DiffuseLight::from_color([15.; 3]);
     let length = 555.;
     let square = [length; 2];
     let glass = Dielectric::new(1.5);
@@ -183,7 +183,7 @@ fn cornell_smoke(label: &str) -> Scene {
     let red = Lambertian::from_color([0.65, 0.05, 0.05]);
     let white = Lambertian::from_color([0.73; 3]);
     let green = Lambertian::from_color([0.12, 0.45, 0.15]);
-    let light = DiffuseLight::from_color([15.; 3]);
+    let light = DiffuseLight::from_color([7.; 3]);
     let length = 555.;
     let square = [length; 2];
     let corner = [0.; 2];
@@ -235,7 +235,7 @@ fn final_scene(label: &str) -> Scene {
     ).flatten().collect();
     let boxes = BVHNode::new(&boxes, 0., 1., None);
 
-    let light = DiffuseLight::from_color([7.; 3]);
+    let light = DiffuseLight::from_color([15.; 3]);
     let xz = FlipFace::new(AxisAlignedRect::new(light, 554., [123., 147.], [423., 412.], AlignedAxis::XZ));
 
     let center1 = Point3::from([400., 400., 200.]);
@@ -261,7 +261,7 @@ fn final_scene(label: &str) -> Scene {
     let boxes2 = RotationY::new(boxes2, 15.);
     let boxes2 = Translation::new(boxes2, [-100., 270., 395.]);
     let lights: Vec<SharedHittable> =vec![xz,
-                                        dielectric_sphere
+                                          dielectric_sphere,
     ];
     let world: Vec<SharedHittable> = vec![
         boxes, moving_sphere, metal_sphere, dielectric_medium,

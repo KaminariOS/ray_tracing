@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use crate::camera::Camera;
 use crate::types::Color;
 use crate::Ray;
@@ -215,18 +216,19 @@ impl Renderer {
                      };
                      // let mixed_pdf = hittable_pdf;
                     let scattered = Ray::new(hit_record.point, mixed_pdf.generate(), r.time);
+                     let cosine = scattered.direction.dot(&hit_record.normal).max(0.0001);
                     let pdf_val = mixed_pdf.value(scattered.direction);
-                    (scattered, pdf_val)
+                    (scattered, pdf_val / cosine * PI * 2.)
                 }
                 ScatterType::Specular(scattered) | ScatterType::ISO(scattered) => (scattered, 1.)
             };
-
                 // log::info!("pdf_m: {:?}; pdf_val: {}", pdf_m, pdf_val);
            // pdf_m *
                attenuation.component_mul(&self.ray_color(&scattered, depth - 1)) / pdf_val
             } else {
                 Color::zeros()
             };
+
             emitted + scattered
         } else {
             self.scene.background
